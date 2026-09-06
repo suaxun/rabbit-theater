@@ -13,8 +13,10 @@ jQuery(async () => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(tutuScenarios));
     }
 
+    let scrapedPrompts = []; // 用于存放从页面上抓取到的原生预设
+
     // ==========================================
-    // 1. 注入 CSS 样式 (让排版和 Tab 切换更美观)
+    // 1. 注入 CSS 样式
     // ==========================================
     const tutuStyle = `
         <style>
@@ -45,17 +47,15 @@ jQuery(async () => {
     const panelHtml = `
         <div id="tutu_theater_panel" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 500px; background-color: var(--SmartThemeBlurTintColor); backdrop-filter: blur(var(--SmartThemeBlurStrength)); border: 1px solid var(--SmartThemeBorderColor); border-radius: 10px; padding: 20px; z-index: 99999; box-shadow: 0 10px 40px rgba(0,0,0,0.8); color: var(--SmartThemeBodyColor); flex-direction: column;">
             
-            <!-- 头部 -->
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                 <h3 style="margin: 0; font-size: 1.3em;">🐰 兔兔小剧场</h3>
                 <div id="tutu_close" class="fa-solid fa-xmark interactable hoverglow" title="关闭" style="font-size: 1.5em;"></div>
             </div>
             
-            <!-- 标签导航 -->
             <div class="tutu-tab-nav">
                 <div class="tutu-tab-btn active" data-tab="tutu_tab_generate">🎬 生成</div>
                 <div class="tutu-tab-btn" data-tab="tutu_tab_library">📚 我的剧本</div>
-                <div class="tutu-tab-btn" data-tab="tutu_tab_import">📥 系统预设</div>
+                <div class="tutu-tab-btn" data-tab="tutu_tab_import">📥 页面提取</div>
             </div>
 
             <!-- TAB 1: 生成区 -->
@@ -73,19 +73,15 @@ jQuery(async () => {
                     <input type="text" id="tutu_new_name" class="text_pole" placeholder="给当前输入框的情境起个名字..." style="flex:1; margin:0;">
                     <div id="tutu_save_btn" class="menu_button margin0"><i class="fa-solid fa-save"></i> 保存</div>
                 </div>
-                <div id="tutu_library_list" style="overflow-y:auto; max-height:250px; display:flex; flex-direction:column; gap:8px;">
-                    <!-- JS 渲染的剧本库 -->
-                </div>
+                <div id="tutu_library_list" style="overflow-y:auto; max-height:250px; display:flex; flex-direction:column; gap:8px;"></div>
             </div>
 
-            <!-- TAB 3: 系统预设导入 -->
+            <!-- TAB 3: 页面预设提取 -->
             <div id="tutu_tab_import" class="tutu-tab-content">
                 <div style="margin-bottom: 10px; font-size: 0.9em; opacity: 0.8;">
-                    <i class="fa-solid fa-info-circle"></i> 下方列出了 ST 系统 Prompt Manager 里的所有条目，你可以预览并一键收录到兔兔小剧场中。
+                    <i class="fa-solid fa-info-circle"></i> 下方列出了当前页面上所有的 Prompt Manager 预设条目。
                 </div>
-                <div id="tutu_native_prompts_list" style="overflow-y:auto; max-height:260px; display:flex; flex-direction:column; gap:10px;">
-                    <div style="text-align:center; padding: 20px;">正在读取系统预设...</div>
-                </div>
+                <div id="tutu_scraped_list" style="overflow-y:auto; max-height:260px; display:flex; flex-direction:column; gap:10px;"></div>
             </div>
 
         </div>
@@ -124,14 +120,12 @@ jQuery(async () => {
                 </div>
             `);
 
-            // 载入剧本并跳回生成页面
             $item.find('.tutu-load-btn').on('click', function() {
                 $('#tutu_prompt').val(item.prompt);
                 $('.tutu-tab-btn[data-tab="tutu_tab_generate"]').trigger('click');
                 toastr.info(`已载入: ${item.name}`, "兔兔小剧场");
             });
 
-            // 删除
             $item.find('.tutu-item-delete').on('click', function() {
                 tutuScenarios.splice(index, 1);
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(tutuScenarios));
@@ -142,60 +136,58 @@ jQuery(async () => {
         });
     }
 
-    // 渲染：读取系统 Prompt Manager 预设
-    function fetchAndRenderNativePrompts() {
-        const $list = $('#tutu_native_prompts_list');
-        $list.html('<div style="text-align:center; padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i> 正在读取底层数据...</div>');
+    // 核心修复：直接从 DOM 抓取 Prompt Manager 列表
+    function scrapeAndRenderPromptsFromDOM() {
+        scrapedPrompts = [];
+        const $list = $('#tutu_scraped_list');
+        $list.empty();
 
-        // 直接请求 ST 的底层设置 API，绝对不会漏掉任何数据
-        $.ajax({
-            url: '/api/settings/get',
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify({}),
-            success: function(data) {
-                $list.empty();
-                if(data && data.settings) {
-                    const settings = JSON.parse(data.settings);
-                    const prompts = settings?.oai_settings?.prompt_manager || [];
-                    
-                    if (prompts.length === 0) {
-                        $list.html('<div style="text-align:center; padding: 20px; opacity:0.6;">系统预设库中没有任何条目。</div>');
-                        return;
-                    }
+        const $promptElements = $('.completion_prompt_manager_prompt.completion_prompt_manager_prompt_draggable');
+        
+        if ($promptElements.length === 0) {
+            $list.html('<div style="text-align:center; padding: 20px; opacity:0.6;">当前页面没有找到任何预设条目，请确保你在 AI 设置中打开了相应的预设列表。</div>');
+            return;
+        }
 
-                    prompts.forEach((p) => {
-                        const $card = $(`
-                            <div class="tutu-preset-card">
-                                <div class="tutu-preset-name">${p.name || "未命名"}</div>
-                                <div class="tutu-preset-text">${p.prompt || ""}</div>
-                                <div class="menu_button tutu-import-btn margin0" style="width: 100%; justify-content: center;">
-                                    <i class="fa-solid fa-download"></i> 收录到我的剧本
-                                </div>
-                            </div>
-                        `);
+        $promptElements.each(function(index) {
+            // 【关键修复】：跳过带有 ☰ 的 span，准确拿到名字！
+            let name = $(this).find('span').filter(function() {
+                return $(this).text().trim() !== '☰' && $(this).text().trim() !== '';
+            }).first().text().trim();
+            
+            if (!name) name = `未命名条目 ${index + 1}`;
 
-                        // 收录功能
-                        $card.find('.tutu-import-btn').on('click', function() {
-                            tutuScenarios.push({
-                                name: p.name || "导入的预设",
-                                prompt: p.prompt || ""
-                            });
-                            localStorage.setItem(STORAGE_KEY, JSON.stringify(tutuScenarios));
-                            renderLibrary();
-                            
-                            toastr.success(`已收录: ${p.name}`);
-                            // 自动跳回我的剧本库
-                            $('.tutu-tab-btn[data-tab="tutu_tab_library"]').trigger('click');
-                        });
+            // ST 的数据通常存在 DOM 元素的 jQuery data 里
+            const itemData = $(this).data('item') || $(this).data('prompt') || {};
+            // 尝试从对象、属性中获取提示词正文
+            let promptText = itemData.prompt || itemData.content || itemData.value || $(this).attr('title') || "";
+            
+            scrapedPrompts.push({ name, prompt: promptText });
 
-                        $list.append($card);
-                    });
-                }
-            },
-            error: function() {
-                $list.html('<div style="text-align:center; color:red; padding: 20px;">读取失败，请稍后重试。</div>');
-            }
+            // 渲染到提取列表中
+            const $card = $(`
+                <div class="tutu-preset-card">
+                    <div class="tutu-preset-name">${name}</div>
+                    <div class="tutu-preset-text">${promptText || "【未检测到正文内容，导入后可手动补充】"}</div>
+                    <div class="menu_button tutu-import-btn margin0" style="width: 100%; justify-content: center;">
+                        <i class="fa-solid fa-download"></i> 收录到我的剧本
+                    </div>
+                </div>
+            `);
+
+            $card.find('.tutu-import-btn').on('click', function() {
+                tutuScenarios.push({
+                    name: name,
+                    prompt: promptText
+                });
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(tutuScenarios));
+                renderLibrary();
+                
+                toastr.success(`已收录: ${name}`);
+                $('.tutu-tab-btn[data-tab="tutu_tab_library"]').trigger('click'); // 跳回剧本库
+            });
+
+            $list.append($card);
         });
     }
 
@@ -222,17 +214,15 @@ jQuery(async () => {
         if(extensionsMenu) extensionsMenu.style.display = 'none';
         
         renderLibrary();
-        fetchAndRenderNativePrompts(); // 打开时实时读取系统数据
+        scrapeAndRenderPromptsFromDOM(); // 每次打开，重新爬取一次页面上的条目！
         
         $('#tutu_theater_panel').fadeIn(200).css('display', 'flex'); 
     });
 
-    // 关闭面板
     $('#tutu_close').on('click', function() {
         $('#tutu_theater_panel').fadeOut(200);
     });
 
-    // 保存当前输入框的剧本
     $('#tutu_save_btn').on('click', function() {
         const name = $('#tutu_new_name').val().trim();
         const prompt = $('#tutu_prompt').val().trim();
@@ -250,7 +240,6 @@ jQuery(async () => {
         toastr.success(`剧本 [${name}] 已保存！`);
     });
 
-    // 生成剧场
     $('#tutu_generate_btn').on('click', async function() {
         const userScenario = $('#tutu_prompt').val().trim();
         if (!userScenario) return toastr.warning("请先输入剧场情境！");
@@ -267,7 +256,7 @@ jQuery(async () => {
             $('#tutu_result_box').text(response);
         } catch (error) {
             console.error(error);
-            $('#tutu_result_box').text("❌ 生成失败，请检查大模型 API 连接。");
+            $('#tutu_result_box').text("❌ 生成失败，请检查 API 连接。");
         } finally {
             $('#tutu_generate_btn').removeClass('disabled'); 
         }
