@@ -1,0 +1,45 @@
+/* 小剧场独立面板的样式 */
+#tutu_theater_panel {
+    position: absolute;
+    bottom: 70px; /* 悬浮在聊天框上方 */
+    left: 10px;
+    width: 350px;
+    background-color: var(--SmartThemeBlurTintColor); /* 贴合原生的毛玻璃背景 */
+    backdrop-filter: blur(var(--SmartThemeBlurStrength));
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 10px;
+    padding: 15px;
+    z-index: 9999;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    color: var(--SmartThemeBodyColor);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+#tutu_theater_panel h3 {
+    margin: 0;
+    font-size: 1.2em;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.tutu-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--SmartThemeBorderColor);
+    padding-bottom: 5px;
+}
+
+#tutu_result_box {
+    min-height: 100px;
+    max-height: 250px;
+    overflow-y: auto;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+    padding: 10px;
+    white-space: pre-wrap;
+    font-size: 0.9em;
+}
