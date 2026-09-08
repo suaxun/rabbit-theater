@@ -1,7 +1,6 @@
 
 import { generateRaw, getRequestHeaders } from "/script.js"; 
 // 注：不需要引入 oai_settings 和 power_user 了，因为我们要直接读文件
-import { getPresetManager } from "/scripts/preset-manager.js";
 jQuery(async () => {
     // ==========================================
     // 0. 数据存储管理 (LocalStorage)
@@ -210,23 +209,42 @@ jQuery(async () => {
         let data = null;
         
         try {
-            // 【核心修复】：直接调用 ST 原生的 PresetManager 获取数据，不用手动 fetch API
-            const pm = getPresetManager();
-            data = await pm.getPreset(type, fileName);
+            // 【核心修复】：ST 新版获取预设内容的 API 是 GET /api/presets/:type/:name
+            const endpoint = `/api/presets/${type}/${encodeURIComponent(fileName)}`;
             
-            if (!data) {
-                throw new Error("未获取到预设数据，文件可能损坏或不存在");
+            const res = await fetch(endpoint, {
+                method: 'GET',
+                headers: getRequestHeaders()
+            });
+            
+            if (res.ok) {
+                data = await res.json();
+            } else {
+                // 【终极兜底】：如果 API 依然 404，说明可能是很老的版本，我们直接去静态文件夹里硬读文件
+                const fallbackExt = type === 'sysprompt' ? '.json' : '.settings';
+                const folder = type === 'sysprompt' ? 'Systemprompts' : 'OpenAI Settings';
+                const staticUrl = `/${folder}/${encodeURIComponent(fileName)}${fallbackExt}`;
+                
+                const staticRes = await fetch(staticUrl);
+                if (staticRes.ok) {
+                    data = await staticRes.json();
+                } else {
+                    // 如果 .settings 读不到，尝试读 .json (OpenAI 有时用 json 保存)
+                    if (type === 'openai') {
+                        const staticRes2 = await fetch(`/${folder}/${encodeURIComponent(fileName)}.json`);
+                        if (staticRes2.ok) data = await staticRes2.json();
+                    }
+                    if (!data) throw new Error(`无法获取预设文件: ${fileName}`);
+                }
             }
             
-            // 解析数据
+            // 解析提取数据
             if (type === 'sysprompt') {
                 if (data.content && data.content.trim()) allPrompts.push({ name: "主提示词 (Main Prompt)", prompt: data.content });
                 if (data.post_history && data.post_history.trim()) allPrompts.push({ name: "对话后指令 (Post-History)", prompt: data.post_history });
             } else {
-                // OpenAI 对话补全的预设里，提示词存放在 prompt_manager (或 prompts) 数组中
                 const pmArray = data.prompts || data.prompt_manager || [];
                 pmArray.forEach(p => {
-                    // 兼容不同版本的 ST 预设字段
                     const promptText = p.content || p.prompt || p.value || p.text;
                     if (p.name && promptText) allPrompts.push({ name: p.name, prompt: promptText });
                 });
@@ -260,6 +278,7 @@ jQuery(async () => {
                             <i class="fa-solid fa-eye"></i> 查看
                         </div>
                     </div>
+                    <!-- 隐藏的正文内容 -->
                     <div class="tutu-preset-text tutu-hidden-content-${index}" style="display:none; margin-top: 5px; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 5px; white-space: pre-wrap; word-break: break-all; max-height: 150px; overflow-y: auto;">${promptText}</div>
                 </div>
             `);
