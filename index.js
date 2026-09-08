@@ -1,6 +1,4 @@
-import { generateRaw } from "/script.js"; 
-import { oai_settings } from "/scripts/openai.js";
-import { power_user } from "/scripts/power-user.js"; // 【新增】用于获取主系统提示词
+
 import { generateRaw, getRequestHeaders } from "/script.js"; 
 // 注：不需要引入 oai_settings 和 power_user 了，因为我们要直接读文件
 
