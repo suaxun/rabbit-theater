@@ -1,7 +1,7 @@
 
 import { generateRaw, getRequestHeaders } from "/script.js"; 
 // 注：不需要引入 oai_settings 和 power_user 了，因为我们要直接读文件
-
+import { getPresetManager } from "/scripts/preset-manager.js";
 jQuery(async () => {
     // ==========================================
     // 0. 数据存储管理 (LocalStorage)
@@ -198,7 +198,7 @@ jQuery(async () => {
 
     async function fetchAndRenderNativePrompts() {
         const $list = $('#tutu_native_prompts_list');
-        const type = $('#tutu_preset_type').val();
+        const type = $('#tutu_preset_type').val(); // 'sysprompt' 或 'openai'
         const fileName = $('#tutu_preset_file').val();
         
         if (!fileName) return;
@@ -210,35 +210,12 @@ jQuery(async () => {
         let data = null;
         
         try {
-            // 优先尝试 ST 新版统一预设 API
-            const res = await fetch('/api/presets/get', {
-                method: 'POST',
-                headers: getRequestHeaders(),
-                body: JSON.stringify({ 
-                    "for": type,      // 新版 API 必须用 "for" 指定类型 (sysprompt 或 openai)
-                    "name": fileName  // 新版 API 必须用 "name" 指定文件名
-                })
-            });
+            // 【核心修复】：直接调用 ST 原生的 PresetManager 获取数据，不用手动 fetch API
+            const pm = getPresetManager();
+            data = await pm.getPreset(type, fileName);
             
-            if (res.ok) {
-                data = await res.json();
-            } else {
-                // 如果新版 API 失败，尝试后备旧版 API
-                if (type === 'sysprompt') {
-                    const fallbackRes = await fetch('/api/system-prompts/get', {
-                        method: 'POST',
-                        headers: getRequestHeaders(),
-                        body: JSON.stringify({ name: fileName })
-                    });
-                    data = await fallbackRes.json();
-                } else {
-                    const fallbackRes = await fetch('/api/openai/get_preset', {
-                        method: 'POST',
-                        headers: getRequestHeaders(),
-                        body: JSON.stringify({ file_name: fileName, preset_settings: "openai" })
-                    });
-                    data = await fallbackRes.json();
-                }
+            if (!data) {
+                throw new Error("未获取到预设数据，文件可能损坏或不存在");
             }
             
             // 解析数据
@@ -246,9 +223,11 @@ jQuery(async () => {
                 if (data.content && data.content.trim()) allPrompts.push({ name: "主提示词 (Main Prompt)", prompt: data.content });
                 if (data.post_history && data.post_history.trim()) allPrompts.push({ name: "对话后指令 (Post-History)", prompt: data.post_history });
             } else {
+                // OpenAI 对话补全的预设里，提示词存放在 prompt_manager (或 prompts) 数组中
                 const pmArray = data.prompts || data.prompt_manager || [];
                 pmArray.forEach(p => {
-                    const promptText = p.content || p.prompt || p.value;
+                    // 兼容不同版本的 ST 预设字段
+                    const promptText = p.content || p.prompt || p.value || p.text;
                     if (p.name && promptText) allPrompts.push({ name: p.name, prompt: promptText });
                 });
             }
@@ -281,7 +260,6 @@ jQuery(async () => {
                             <i class="fa-solid fa-eye"></i> 查看
                         </div>
                     </div>
-                    <!-- 隐藏的正文内容，去掉了之前的固定高度限制，改用独立的内部滚动 -->
                     <div class="tutu-preset-text tutu-hidden-content-${index}" style="display:none; margin-top: 5px; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 5px; white-space: pre-wrap; word-break: break-all; max-height: 150px; overflow-y: auto;">${promptText}</div>
                 </div>
             `);
@@ -305,10 +283,10 @@ jQuery(async () => {
         $('.tutu-view-btn').on('click', function() {
             const index = $(this).data('index');
             const $content = $('.tutu-hidden-content-' + index);
-            // jQuery 丝滑展开/收起，时长 150ms
             $content.slideToggle(150); 
         });
     }
+
 
 
 
