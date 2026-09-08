@@ -163,78 +163,127 @@ jQuery(async () => {
     }
 
      // 渲染：带复选框的系统预设列表
-    function fetchAndRenderNativePrompts() {
+    // 渲染：带复选框的系统预设列表 (全面扫描预设文件 + 抓取当前界面DOM)
+    async function fetchAndRenderNativePrompts() {
         const $list = $('#tutu_native_prompts_list');
-        $list.html('<div style="text-align:center; padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i> 正在请求系统数据...</div>');
+        $list.html('<div style="text-align:center; padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i> 正在扫描所有预设和条目...</div>');
+        $('#tutu_select_all').prop('checked', false);
 
-        // 发送网络请求读取最新数据
-        $.ajax({
-            url: '/api/settings/get',
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify({}),
-            success: function(data) {
-                $list.empty();
-                $('#tutu_select_all').prop('checked', false); // 重置全选框
+        let allPrompts = [];
+        window.tutuTempNativePrompts = [];
 
-                if(data && data.settings) {
-                    const settings = JSON.parse(data.settings);
-                    
-                    // ====================================================
-                    // 核心修改区：兼容新老版本 ST 的 Prompt Manager 路径
-                    // ====================================================
-                    let prompts = [];
-                    
-                    // 1. 新版 ST：存在于 extension_settings.prompt_manager.prompts
-                    const extPrompts = settings?.extension_settings?.prompt_manager?.prompts;
-                    if (Array.isArray(extPrompts)) {
-                        prompts = prompts.concat(extPrompts);
-                    }
-
-                    // 2. 兼容老版本及你原本写的路径
-                    if (Array.isArray(settings?.custom_prompts)) prompts = prompts.concat(settings.custom_prompts);
-                    if (Array.isArray(settings?.oai_settings?.prompt_manager)) prompts = prompts.concat(settings.oai_settings.prompt_manager);
-                    if (Array.isArray(settings?.prompt_manager)) prompts = prompts.concat(settings.prompt_manager);
-                    // ====================================================
-
-                    if (prompts.length === 0) {
-                        $list.html('<div style="text-align:center; padding: 20px; opacity:0.6;">系统预设库中没有任何条目。<br><small style="font-size:0.8em; margin-top:5px; display:block;">(请确保你在 ST 的“提示词管理器(Prompt Manager)”中添加过内容)</small></div>');
-                        return;
-                    }
-
-                    // 把拿到的原生数据绑在全局，方便后面批量导入时取用
-                    window.tutuTempNativePrompts = prompts;
-
-                    prompts.forEach((p, index) => {
-                        const name = p.name || "未命名";
-                        // 获取正文，ST 原生的 prompt 字段通常叫 prompt
-                        const promptText = p.prompt || p.content || p.value || "【无正文内容】";
-
-                        const $card = $(`
-                            <label class="tutu-preset-card" style="display: flex; gap: 10px; align-items: flex-start; cursor: pointer;">
-                                <input type="checkbox" class="tutu-import-checkbox" value="${index}" style="margin-top: 5px; width: 18px; height: 18px; cursor: pointer;">
-                                <div style="flex:1; width: calc(100% - 30px);">
-                                    <div class="tutu-preset-name">${name}</div>
-                                    <div class="tutu-preset-text">${promptText}</div>
-                                </div>
-                            </label>
-                        `);
-                        $list.append($card);
-                    });
-
-                    // 绑定单独 checkbox 的点击事件，以反向更新“全选”框状态
-                    $('.tutu-import-checkbox').on('change', function() {
-                        const total = $('.tutu-import-checkbox').length;
-                        const checked = $('.tutu-import-checkbox:checked').length;
-                        $('#tutu_select_all').prop('checked', total === checked);
-                    });
-                }
-            },
-            error: function() {
-                $list.html('<div style="text-align:center; color:red; padding: 20px;">读取失败，请稍后重试。</div>');
+        // 1. 获取下拉框中所有的 OpenAI 预设名称
+        const presetNames = [];
+        $('#settings_preset_openai option').each(function() {
+            const val = $(this).val();
+            // 排除空的或 gui 占位符
+            if (val && val !== 'gui') {
+                presetNames.push(val);
             }
         });
+
+        // 2. 遍历拉取每个预设的文件 (SillyTavern 默认静态暴露了 OpenAI Settings 目录)
+        for (const presetName of presetNames) {
+            let presetData = null;
+            try {
+                // 尝试获取 .settings 文件
+                let res = await fetch(`/OpenAI Settings/${encodeURIComponent(presetName)}.settings`);
+                if (res.ok) {
+                    presetData = await res.json();
+                } else {
+                    // 如果没有 .settings，尝试 .json 文件
+                    res = await fetch(`/OpenAI Settings/${encodeURIComponent(presetName)}.json`);
+                    if (res.ok) presetData = await res.json();
+                }
+            } catch (e) {
+                console.warn(`无法读取预设文件: ${presetName}`, e);
+            }
+
+            if (presetData) {
+                // ST 的 Prompt Manager 内容存放字段通常是 custom_prompts
+                const prompts = presetData.custom_prompts || presetData.prompt_manager || presetData.prompts || [];
+                if (Array.isArray(prompts) && prompts.length > 0) {
+                    prompts.forEach(p => {
+                        // 只抓取包含正文的条目
+                        if (p.name && p.prompt) {
+                            p._sourcePreset = presetName;
+                            allPrompts.push(p);
+                        }
+                    });
+                }
+            }
+        }
+
+        // 3. 终极后备方案：直接从当前界面的 Prompt Manager DOM 中硬抓取
+        // 防止用户正在编辑还未保存，或者网络抓取失败
+        $('.completion_prompt_manager_prompt').each(function() {
+            // ST 会将核心数据绑定在元素的 jQuery data 上
+            const data = $(this).data('prompt') || $(this).data('item') || $(this).data();
+            
+            // 尝试寻找界面上的名字
+            const uiName = $(this).find('.prompt_name').text() || $(this).find('span').first().text() || "未命名";
+            
+            let promptObj = null;
+            if (data && data.prompt) {
+                promptObj = { name: data.name || uiName, prompt: data.prompt };
+            }
+            
+            if (promptObj) {
+                // 查重：如果上面读文件已经读到了，就不重复显示
+                const exists = allPrompts.find(p => p.name === promptObj.name && p.prompt === promptObj.prompt);
+                if (!exists) {
+                    promptObj._sourcePreset = "当前界面 (活动中)";
+                    allPrompts.push(promptObj);
+                }
+            }
+        });
+
+        // 4. 清空并渲染到列表
+        $list.empty();
+
+        if (allPrompts.length === 0) {
+            $list.html(`
+                <div style="text-align:center; padding: 20px; opacity:0.6;">
+                    未能从预设框或当前界面中提取到任何条目。<br>
+                    <small style="font-size:0.8em; margin-top:5px; display:block;">
+                        (请确保你在 Chat Completion Presets 的 Prompt Manager 中添加了条目并保存过)
+                    </small>
+                </div>
+            `);
+            return;
+        }
+
+        // 绑定到全局，供下方【导入所选项】按钮使用
+        window.tutuTempNativePrompts = allPrompts;
+
+        allPrompts.forEach((p, index) => {
+            const name = p.name || "未命名";
+            const promptText = p.prompt || p.content || p.value || "【无正文内容】";
+            const source = p._sourcePreset || "未知预设";
+
+            const $card = $(`
+                <label class="tutu-preset-card" style="display: flex; gap: 10px; align-items: flex-start; cursor: pointer;">
+                    <input type="checkbox" class="tutu-import-checkbox" value="${index}" style="margin-top: 5px; width: 18px; height: 18px; cursor: pointer;">
+                    <div style="flex:1; width: calc(100% - 30px);">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div class="tutu-preset-name">${name}</div>
+                            <span style="font-size: 0.75em; opacity: 0.6; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px;">来源: ${source}</span>
+                        </div>
+                        <div class="tutu-preset-text">${promptText}</div>
+                    </div>
+                </label>
+            `);
+            $list.append($card);
+        });
+
+        // 绑定反向更新全选框的事件
+        $('.tutu-import-checkbox').on('change', function() {
+            const total = $('.tutu-import-checkbox').length;
+            const checked = $('.tutu-import-checkbox:checked').length;
+            $('#tutu_select_all').prop('checked', total === checked);
+        });
     }
+
 
 
     // ==========================================
