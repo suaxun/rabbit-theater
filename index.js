@@ -220,12 +220,19 @@ jQuery(async () => {
                 if (data.content && data.content.trim()) allPrompts.push({ name: "主提示词 (Main Prompt)", prompt: data.content });
                 if (data.post_history && data.post_history.trim()) allPrompts.push({ name: "对话后指令 (Post-History)", prompt: data.post_history });
             } else {
-                // 向 ST 后端请求特定的对话补全预设文件
-                const res = await fetch('/api/presets/get', {
+            } else {
+                // 向 ST 后端请求特定的对话补全预设文件 (正确的 API 是 /api/openai/get_preset)
+                const res = await fetch('/api/openai/get_preset', {
                     method: 'POST',
                     headers: getRequestHeaders(),
-                    body: JSON.stringify({ file_name: fileName, preset_settings: "openai" })
+                    body: JSON.stringify({ file_name: fileName })
                 });
+                
+                // 增加一层拦截：如果服务器没有成功返回（比如文件不存在），直接抛出错误，避免 JSON 解析崩溃
+                if (!res.ok) {
+                    throw new Error(`获取预设失败，服务器状态码: ${res.status}`);
+                }
+                
                 const data = await res.json();
                 const pmArray = data.prompts || data.prompt_manager || [];
                 pmArray.forEach(p => {
