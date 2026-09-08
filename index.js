@@ -162,7 +162,7 @@ jQuery(async () => {
         });
     }
 
-    // 渲染：带复选框的系统预设列表
+     // 渲染：带复选框的系统预设列表
     function fetchAndRenderNativePrompts() {
         const $list = $('#tutu_native_prompts_list');
         $list.html('<div style="text-align:center; padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i> 正在请求系统数据...</div>');
@@ -179,13 +179,26 @@ jQuery(async () => {
 
                 if(data && data.settings) {
                     const settings = JSON.parse(data.settings);
-                    // 从 ST 的设置里提取 prompt manager 的数据
-                    // 增加了 settings?.custom_prompts 这个新版 ST 的存储路径
-const prompts = settings?.custom_prompts || settings?.oai_settings?.prompt_manager || settings?.prompt_manager || [];
-
                     
+                    // ====================================================
+                    // 核心修改区：兼容新老版本 ST 的 Prompt Manager 路径
+                    // ====================================================
+                    let prompts = [];
+                    
+                    // 1. 新版 ST：存在于 extension_settings.prompt_manager.prompts
+                    const extPrompts = settings?.extension_settings?.prompt_manager?.prompts;
+                    if (Array.isArray(extPrompts)) {
+                        prompts = prompts.concat(extPrompts);
+                    }
+
+                    // 2. 兼容老版本及你原本写的路径
+                    if (Array.isArray(settings?.custom_prompts)) prompts = prompts.concat(settings.custom_prompts);
+                    if (Array.isArray(settings?.oai_settings?.prompt_manager)) prompts = prompts.concat(settings.oai_settings.prompt_manager);
+                    if (Array.isArray(settings?.prompt_manager)) prompts = prompts.concat(settings.prompt_manager);
+                    // ====================================================
+
                     if (prompts.length === 0) {
-                        $list.html('<div style="text-align:center; padding: 20px; opacity:0.6;">系统预设库中没有任何条目。</div>');
+                        $list.html('<div style="text-align:center; padding: 20px; opacity:0.6;">系统预设库中没有任何条目。<br><small style="font-size:0.8em; margin-top:5px; display:block;">(请确保你在 ST 的“提示词管理器(Prompt Manager)”中添加过内容)</small></div>');
                         return;
                     }
 
@@ -194,7 +207,7 @@ const prompts = settings?.custom_prompts || settings?.oai_settings?.prompt_manag
 
                     prompts.forEach((p, index) => {
                         const name = p.name || "未命名";
-                        // 获取正文，找不到就给个空提示
+                        // 获取正文，ST 原生的 prompt 字段通常叫 prompt
                         const promptText = p.prompt || p.content || p.value || "【无正文内容】";
 
                         const $card = $(`
@@ -222,6 +235,7 @@ const prompts = settings?.custom_prompts || settings?.oai_settings?.prompt_manag
             }
         });
     }
+
 
     // ==========================================
     // 4. 事件绑定
