@@ -207,32 +207,45 @@ jQuery(async () => {
         $('#tutu_select_all').prop('checked', false);
 
         let allPrompts = [];
+        let data = null;
         
         try {
+            // 优先尝试 ST 新版统一预设 API
+            const res = await fetch('/api/presets/get', {
+                method: 'POST',
+                headers: getRequestHeaders(),
+                body: JSON.stringify({ 
+                    "for": type,      // 新版 API 必须用 "for" 指定类型 (sysprompt 或 openai)
+                    "name": fileName  // 新版 API 必须用 "name" 指定文件名
+                })
+            });
+            
+            if (res.ok) {
+                data = await res.json();
+            } else {
+                // 如果新版 API 失败，尝试后备旧版 API
+                if (type === 'sysprompt') {
+                    const fallbackRes = await fetch('/api/system-prompts/get', {
+                        method: 'POST',
+                        headers: getRequestHeaders(),
+                        body: JSON.stringify({ name: fileName })
+                    });
+                    data = await fallbackRes.json();
+                } else {
+                    const fallbackRes = await fetch('/api/openai/get_preset', {
+                        method: 'POST',
+                        headers: getRequestHeaders(),
+                        body: JSON.stringify({ file_name: fileName, preset_settings: "openai" })
+                    });
+                    data = await fallbackRes.json();
+                }
+            }
+            
+            // 解析数据
             if (type === 'sysprompt') {
-                // 向 ST 后端请求特定的系统提示词文件
-                const res = await fetch('/api/system-prompts/get', {
-                    method: 'POST',
-                    headers: getRequestHeaders(),
-                    body: JSON.stringify({ name: fileName })
-                });
-                const data = await res.json();
                 if (data.content && data.content.trim()) allPrompts.push({ name: "主提示词 (Main Prompt)", prompt: data.content });
                 if (data.post_history && data.post_history.trim()) allPrompts.push({ name: "对话后指令 (Post-History)", prompt: data.post_history });
             } else {
-                // 向 ST 后端请求特定的对话补全预设文件 (正确的 API 是 /api/openai/get_preset)
-                const res = await fetch('/api/openai/get_preset', {
-                    method: 'POST',
-                    headers: getRequestHeaders(),
-                    body: JSON.stringify({ file_name: fileName })
-                });
-                
-                // 增加一层拦截：如果服务器没有成功返回（比如文件不存在），直接抛出错误，避免 JSON 解析崩溃
-                if (!res.ok) {
-                    throw new Error(`获取预设失败，服务器状态码: ${res.status}`);
-                }
-                
-                const data = await res.json();
                 const pmArray = data.prompts || data.prompt_manager || [];
                 pmArray.forEach(p => {
                     const promptText = p.content || p.prompt || p.value;
@@ -240,8 +253,8 @@ jQuery(async () => {
                 });
             }
         } catch (error) {
-            console.error(error);
-            $list.html('<div style="text-align:center; color:red; padding: 20px;">读取预设失败</div>');
+            console.error("读取预设失败:", error);
+            $list.html('<div style="text-align:center; color:red; padding: 20px;">读取预设失败，请检查控制台。</div>');
             return;
         }
 
@@ -253,7 +266,7 @@ jQuery(async () => {
         window.tutuTempNativePrompts = allPrompts;
         $list.empty();
 
-        // 渲染列表：带查看内容按钮和隐藏的内容区
+        // 渲染列表：带【查看】按钮和默认隐藏的正文内容区
         allPrompts.forEach((p, index) => {
             const name = p.name || "未命名";
             const promptText = p.prompt;
@@ -262,30 +275,38 @@ jQuery(async () => {
                 <div class="tutu-preset-card" style="display: flex; flex-direction: column; gap: 5px;">
                     <div style="display: flex; gap: 10px; align-items: center;">
                         <input type="checkbox" class="tutu-import-checkbox" value="${index}" style="width: 18px; height: 18px; cursor: pointer;">
-                        <div class="tutu-preset-name" style="flex:1; margin:0; cursor: pointer;" onclick="$(this).prev().click()">${name}</div>
-                        <div class="menu_button margin0 tutu-view-btn" data-index="${index}" style="font-size:0.8em; padding: 5px;">
+                        <div class="tutu-preset-name" style="flex:1; margin:0; cursor: pointer;">${name}</div>
+                        <!-- 查看按钮 -->
+                        <div class="menu_button margin0 tutu-view-btn" data-index="${index}" style="font-size:0.8em; padding: 5px 10px; min-width: 60px; justify-content: center;">
                             <i class="fa-solid fa-eye"></i> 查看
                         </div>
                     </div>
-                    <!-- 隐藏的正文内容 -->
-                    <div class="tutu-preset-text tutu-hidden-content-${index}" style="display:none; margin-top: 5px;">${promptText}</div>
+                    <!-- 隐藏的正文内容，去掉了之前的固定高度限制，改用独立的内部滚动 -->
+                    <div class="tutu-preset-text tutu-hidden-content-${index}" style="display:none; margin-top: 5px; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 5px; white-space: pre-wrap; word-break: break-all; max-height: 150px; overflow-y: auto;">${promptText}</div>
                 </div>
             `);
             $list.append($card);
         });
 
-        // 绑定反向更新全选框的事件
+        // 绑定全选框反向更新逻辑
         $('.tutu-import-checkbox').on('change', function() {
             const total = $('.tutu-import-checkbox').length;
             const checked = $('.tutu-import-checkbox:checked').length;
             $('#tutu_select_all').prop('checked', total === checked);
         });
 
+        // 点击条目名字，触发多选框选中/取消选中
+        $('.tutu-preset-name').on('click', function() {
+            const $checkbox = $(this).prev('.tutu-import-checkbox');
+            $checkbox.prop('checked', !$checkbox.prop('checked')).trigger('change');
+        });
+
         // 绑定“查看”按钮的展开/折叠逻辑
         $('.tutu-view-btn').on('click', function() {
             const index = $(this).data('index');
-            const $content = $(`.tutu-hidden-content-${index}`);
-            $content.slideToggle(150); // 带动画展开或折叠
+            const $content = $(\`.tutu-hidden-content-\${index}\`);
+            // jQuery 丝滑展开/收起，时长 150ms
+            $content.slideToggle(150); 
         });
     }
 
