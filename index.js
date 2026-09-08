@@ -180,7 +180,9 @@ jQuery(async () => {
                 if(data && data.settings) {
                     const settings = JSON.parse(data.settings);
                     // 从 ST 的设置里提取 prompt manager 的数据
-                    const prompts = settings?.oai_settings?.prompt_manager || settings?.prompt_manager || [];
+                    // 增加了 settings?.custom_prompts 这个新版 ST 的存储路径
+const prompts = settings?.custom_prompts || settings?.oai_settings?.prompt_manager || settings?.prompt_manager || [];
+
                     
                     if (prompts.length === 0) {
                         $list.html('<div style="text-align:center; padding: 20px; opacity:0.6;">系统预设库中没有任何条目。</div>');
