@@ -220,7 +220,6 @@ jQuery(async () => {
                 if (data.content && data.content.trim()) allPrompts.push({ name: "主提示词 (Main Prompt)", prompt: data.content });
                 if (data.post_history && data.post_history.trim()) allPrompts.push({ name: "对话后指令 (Post-History)", prompt: data.post_history });
             } else {
-            } else {
                 // 向 ST 后端请求特定的对话补全预设文件 (正确的 API 是 /api/openai/get_preset)
                 const res = await fetch('/api/openai/get_preset', {
                     method: 'POST',
