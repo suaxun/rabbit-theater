@@ -1,6 +1,8 @@
 import { generateRaw } from "/script.js"; 
 import { oai_settings } from "/scripts/openai.js";
 import { power_user } from "/scripts/power-user.js"; // 【新增】用于获取主系统提示词
+import { generateRaw, getRequestHeaders } from "/script.js"; 
+// 注：不需要引入 oai_settings 和 power_user 了，因为我们要直接读文件
 
 jQuery(async () => {
     // ==========================================
@@ -87,9 +89,16 @@ jQuery(async () => {
 
             <!-- TAB 3: 多选批量导入系统预设 -->
             <div id="tutu_tab_import" class="tutu-tab-content">
-                <div style="margin-bottom: 5px; font-size: 0.9em; opacity: 0.8;">
-                    <i class="fa-solid fa-info-circle"></i> 勾选下方你需要的系统预设，一键导入到兔兔小剧场中。
+                <div style="display:flex; gap:10px; margin-bottom: 10px;">
+                    <select id="tutu_preset_type" class="text_pole" style="flex: 1; margin: 0;">
+                        <option value="sysprompt">系统提示词 (System Prompts)</option>
+                        <option value="openai">对话补全 (Chat Completion)</option>
+                    </select>
+                    <select id="tutu_preset_file" class="text_pole" style="flex: 2; margin: 0;">
+                        <!-- JS 动态填充下拉列表 -->
+                    </select>
                 </div>
+                
                 <!-- 全选 & 导入按钮控制栏 -->
                 <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 5px; padding-bottom: 10px; border-bottom: 1px dashed var(--SmartThemeBorderColor);">
                     <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
@@ -101,10 +110,12 @@ jQuery(async () => {
                     </div>
                 </div>
                 
-                <div id="tutu_native_prompts_list" style="overflow-y:auto; max-height:280px; display:flex; flex-direction:column; gap:10px;">
-                    <div style="text-align:center; padding: 20px;">正在读取系统预设...</div>
+                <div id="tutu_native_prompts_list" style="overflow-y:auto; max-height:250px; display:flex; flex-direction:column; gap:10px;">
+                    <div style="text-align:center; padding: 20px;">请选择预设...</div>
                 </div>
             </div>
+
+
 
         </div>
     `;
@@ -114,7 +125,30 @@ jQuery(async () => {
     // ==========================================
     // 3. 核心逻辑函数
     // ==========================================
-    
+        // 根据选择的类型，读取 ST 原生下拉框里的选项来填充我们的文件下拉框
+    function updatePresetFileDropdown() {
+        const type = $('#tutu_preset_type').val();
+        const $fileSelect = $('#tutu_preset_file');
+        $fileSelect.empty();
+        
+        // 抓取 ST 界面上现有的下拉框选项
+        const sourceSelector = type === 'sysprompt' ? '#sysprompt_select' : '#settings_preset_openai';
+        
+        $(sourceSelector + ' option').each(function() {
+            const val = $(this).val();
+            const text = $(this).text();
+            if (val) {
+                $fileSelect.append(`<option value="${val}">${text}</option>`);
+            }
+        });
+        
+        // 默认选中当前 ST 正在使用的那个预设
+        const currentActive = $(sourceSelector).val();
+        if (currentActive) $fileSelect.val(currentActive);
+        
+        fetchAndRenderNativePrompts();
+    }
+
     // Tab 切换逻辑
     $('.tutu-tab-btn').on('click', function() {
         $('.tutu-tab-btn').removeClass('active');
@@ -164,94 +198,90 @@ jQuery(async () => {
         });
     }
 
-    // 渲染：带复选框的系统预设列表
-    function fetchAndRenderNativePrompts() {
+    async function fetchAndRenderNativePrompts() {
         const $list = $('#tutu_native_prompts_list');
-        $list.empty();
+        const type = $('#tutu_preset_type').val();
+        const fileName = $('#tutu_preset_file').val();
+        
+        if (!fileName) return;
+        
+        $list.html('<div style="text-align:center; padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i> 读取中...</div>');
         $('#tutu_select_all').prop('checked', false);
 
         let allPrompts = [];
         
-        // ==========================================
-        // 抓取来源 1：提示词管理器 (Prompt Manager)
-        // 兼容新老版本的命名 (prompts 或 prompt_manager)
-        // ==========================================
-        if (typeof oai_settings !== 'undefined') {
-            let pmArray = [];
-            if (Array.isArray(oai_settings.prompts)) {
-                pmArray = oai_settings.prompts; // 新版 ST
-            } else if (Array.isArray(oai_settings.prompt_manager)) {
-                pmArray = oai_settings.prompt_manager; // 老版 ST
-            }
-            
-            pmArray.forEach(p => {
-                const promptText = p.content || p.prompt || p.value;
-                if (p.name && promptText) {
-                    allPrompts.push({
-                        name: "[提示词管理器] " + p.name,
-                        prompt: promptText
-                    });
-                }
-            });
-        }
-
-        // ==========================================
-        // 抓取来源 2：当前的系统提示词预设 (System Prompt)
-        // 包含主提示词 (Main Prompt) 和历史后指令 (NSFW/Jailbreak)
-        // ==========================================
-        if (typeof power_user !== 'undefined' && power_user.sysprompt) {
-            if (power_user.sysprompt.content && power_user.sysprompt.content.trim() !== '') {
-                allPrompts.push({
-                    name: "[系统预设] 主提示词 (Main Prompt)",
-                    prompt: power_user.sysprompt.content
+        try {
+            if (type === 'sysprompt') {
+                // 向 ST 后端请求特定的系统提示词文件
+                const res = await fetch('/api/system-prompts/get', {
+                    method: 'POST',
+                    headers: getRequestHeaders(),
+                    body: JSON.stringify({ name: fileName })
+                });
+                const data = await res.json();
+                if (data.content && data.content.trim()) allPrompts.push({ name: "主提示词 (Main Prompt)", prompt: data.content });
+                if (data.post_history && data.post_history.trim()) allPrompts.push({ name: "对话后指令 (Post-History)", prompt: data.post_history });
+            } else {
+                // 向 ST 后端请求特定的对话补全预设文件
+                const res = await fetch('/api/presets/get', {
+                    method: 'POST',
+                    headers: getRequestHeaders(),
+                    body: JSON.stringify({ file_name: fileName, preset_settings: "openai" })
+                });
+                const data = await res.json();
+                const pmArray = data.prompts || data.prompt_manager || [];
+                pmArray.forEach(p => {
+                    const promptText = p.content || p.prompt || p.value;
+                    if (p.name && promptText) allPrompts.push({ name: p.name, prompt: promptText });
                 });
             }
-            if (power_user.sysprompt.post_history && power_user.sysprompt.post_history.trim() !== '') {
-                allPrompts.push({
-                    name: "[系统预设] 对话后指令 (Post-History)",
-                    prompt: power_user.sysprompt.post_history
-                });
-            }
-        }
-
-        // 如果依然为空，给用户友好的提示
-        if (allPrompts.length === 0) {
-            $list.html(`
-                <div style="text-align:center; padding: 20px; opacity:0.6;">
-                    当前激活的预设中没有任何条目。<br>
-                    <small style="font-size:0.8em; margin-top:5px; display:block;">
-                        (提示: 如果你想导入其他预设里的条目，请先在左侧 ST 菜单切换预设，然后再点开本界面)
-                    </small>
-                </div>
-            `);
+        } catch (error) {
+            console.error(error);
+            $list.html('<div style="text-align:center; color:red; padding: 20px;">读取预设失败</div>');
             return;
         }
 
-        // 绑定到全局供【导入所选项】按钮使用
-        window.tutuTempNativePrompts = allPrompts;
+        if (allPrompts.length === 0) {
+            $list.html('<div style="text-align:center; padding: 20px; opacity:0.6;">选中的预设中没有任何内容。</div>');
+            return;
+        }
 
-        // 渲染卡片
+        window.tutuTempNativePrompts = allPrompts;
+        $list.empty();
+
+        // 渲染列表：带查看内容按钮和隐藏的内容区
         allPrompts.forEach((p, index) => {
             const name = p.name || "未命名";
             const promptText = p.prompt;
 
             const $card = $(`
-                <label class="tutu-preset-card" style="display: flex; gap: 10px; align-items: flex-start; cursor: pointer;">
-                    <input type="checkbox" class="tutu-import-checkbox" value="${index}" style="margin-top: 5px; width: 18px; height: 18px; cursor: pointer;">
-                    <div style="flex:1; width: calc(100% - 30px);">
-                        <div class="tutu-preset-name">${name}</div>
-                        <div class="tutu-preset-text">${promptText}</div>
+                <div class="tutu-preset-card" style="display: flex; flex-direction: column; gap: 5px;">
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="checkbox" class="tutu-import-checkbox" value="${index}" style="width: 18px; height: 18px; cursor: pointer;">
+                        <div class="tutu-preset-name" style="flex:1; margin:0; cursor: pointer;" onclick="$(this).prev().click()">${name}</div>
+                        <div class="menu_button margin0 tutu-view-btn" data-index="${index}" style="font-size:0.8em; padding: 5px;">
+                            <i class="fa-solid fa-eye"></i> 查看
+                        </div>
                     </div>
-                </label>
+                    <!-- 隐藏的正文内容 -->
+                    <div class="tutu-preset-text tutu-hidden-content-${index}" style="display:none; margin-top: 5px;">${promptText}</div>
+                </div>
             `);
             $list.append($card);
         });
 
         // 绑定反向更新全选框的事件
-        $('.tutu-import-checkbox').off('change').on('change', function() {
+        $('.tutu-import-checkbox').on('change', function() {
             const total = $('.tutu-import-checkbox').length;
             const checked = $('.tutu-import-checkbox:checked').length;
             $('#tutu_select_all').prop('checked', total === checked);
+        });
+
+        // 绑定“查看”按钮的展开/折叠逻辑
+        $('.tutu-view-btn').on('click', function() {
+            const index = $(this).data('index');
+            const $content = $(`.tutu-hidden-content-${index}`);
+            $content.slideToggle(150); // 带动画展开或折叠
         });
     }
 
@@ -282,10 +312,21 @@ jQuery(async () => {
         if(extensionsMenu) extensionsMenu.style.display = 'none';
         
         renderLibrary();
-        fetchAndRenderNativePrompts(); // 每次打开，实时请求并渲染最新打勾列表
+        updatePresetFileDropdown(); // ⬅️ 改成调用这个初始化下拉框
         
         $('#tutu_theater_panel').fadeIn(200).css('display', 'flex'); 
     });
+
+    // 监听类型下拉框改变：切换系统/OAI预设
+    $(document).on('change', '#tutu_preset_type', function() {
+        updatePresetFileDropdown();
+    });
+
+    // 监听文件下拉框改变：读取对应文件
+    $(document).on('change', '#tutu_preset_file', function() {
+        fetchAndRenderNativePrompts();
+    });
+
 
     $('#tutu_close').on('click', function() {
         $('#tutu_theater_panel').fadeOut(200);
