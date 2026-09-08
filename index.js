@@ -1,5 +1,7 @@
 import { generateRaw } from "/script.js"; 
 import { oai_settings } from "/scripts/openai.js";
+import { power_user } from "/scripts/power-user.js"; // 【新增】用于获取主系统提示词
+
 jQuery(async () => {
     // ==========================================
     // 0. 数据存储管理 (LocalStorage)
@@ -162,7 +164,7 @@ jQuery(async () => {
         });
     }
 
-    // 渲染：带复选框的系统预设列表 (直接从 ST 内存对象中读取)
+    // 渲染：带复选框的系统预设列表
     function fetchAndRenderNativePrompts() {
         const $list = $('#tutu_native_prompts_list');
         $list.empty();
@@ -170,18 +172,46 @@ jQuery(async () => {
 
         let allPrompts = [];
         
-        // 核心魔法：直接读取刚才在文件头部导入的 oai_settings 内存对象
-        // 当前下拉框选择的预设里面的所有条目，永远都在 oai_settings.prompt_manager 这个数组里
-        if (typeof oai_settings !== 'undefined' && Array.isArray(oai_settings.prompt_manager)) {
-            oai_settings.prompt_manager.forEach(p => {
-                // 只要有名字和正文，就抓取下来
-                if (p.name && p.prompt) {
+        // ==========================================
+        // 抓取来源 1：提示词管理器 (Prompt Manager)
+        // 兼容新老版本的命名 (prompts 或 prompt_manager)
+        // ==========================================
+        if (typeof oai_settings !== 'undefined') {
+            let pmArray = [];
+            if (Array.isArray(oai_settings.prompts)) {
+                pmArray = oai_settings.prompts; // 新版 ST
+            } else if (Array.isArray(oai_settings.prompt_manager)) {
+                pmArray = oai_settings.prompt_manager; // 老版 ST
+            }
+            
+            pmArray.forEach(p => {
+                const promptText = p.content || p.prompt || p.value;
+                if (p.name && promptText) {
                     allPrompts.push({
-                        name: p.name,
-                        prompt: p.prompt
+                        name: "[提示词管理器] " + p.name,
+                        prompt: promptText
                     });
                 }
             });
+        }
+
+        // ==========================================
+        // 抓取来源 2：当前的系统提示词预设 (System Prompt)
+        // 包含主提示词 (Main Prompt) 和历史后指令 (NSFW/Jailbreak)
+        // ==========================================
+        if (typeof power_user !== 'undefined' && power_user.sysprompt) {
+            if (power_user.sysprompt.content && power_user.sysprompt.content.trim() !== '') {
+                allPrompts.push({
+                    name: "[系统预设] 主提示词 (Main Prompt)",
+                    prompt: power_user.sysprompt.content
+                });
+            }
+            if (power_user.sysprompt.post_history && power_user.sysprompt.post_history.trim() !== '') {
+                allPrompts.push({
+                    name: "[系统预设] 对话后指令 (Post-History)",
+                    prompt: power_user.sysprompt.post_history
+                });
+            }
         }
 
         // 如果依然为空，给用户友好的提示
@@ -203,7 +233,7 @@ jQuery(async () => {
         // 渲染卡片
         allPrompts.forEach((p, index) => {
             const name = p.name || "未命名";
-            const promptText = p.prompt || p.content || p.value || "【无正文内容】";
+            const promptText = p.prompt;
 
             const $card = $(`
                 <label class="tutu-preset-card" style="display: flex; gap: 10px; align-items: flex-start; cursor: pointer;">
@@ -218,12 +248,13 @@ jQuery(async () => {
         });
 
         // 绑定反向更新全选框的事件
-        $('.tutu-import-checkbox').on('change', function() {
+        $('.tutu-import-checkbox').off('change').on('change', function() {
             const total = $('.tutu-import-checkbox').length;
             const checked = $('.tutu-import-checkbox:checked').length;
             $('#tutu_select_all').prop('checked', total === checked);
         });
     }
+
 
 
 
