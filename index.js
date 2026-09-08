@@ -304,11 +304,12 @@ jQuery(async () => {
         // 绑定“查看”按钮的展开/折叠逻辑
         $('.tutu-view-btn').on('click', function() {
             const index = $(this).data('index');
-            const $content = $(\`.tutu-hidden-content-\${index}\`);
+            const $content = $('.tutu-hidden-content-' + index);
             // jQuery 丝滑展开/收起，时长 150ms
             $content.slideToggle(150); 
         });
     }
+
 
 
 
