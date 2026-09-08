@@ -209,40 +209,28 @@ jQuery(async () => {
         let data = null;
         
         try {
-            // 【核心修复】：ST 新版获取预设内容的 API 是 GET /api/presets/:type/:name
-            const endpoint = `/api/presets/${type}/${encodeURIComponent(fileName)}`;
-            
-            const res = await fetch(endpoint, {
-                method: 'GET',
-                headers: getRequestHeaders()
+            // 【核心修复】：SillyTavern 官方读取预设的真实 API 是 /api/presets/load
+            const res = await fetch('/api/presets/load', {
+                method: 'POST',
+                headers: getRequestHeaders(),
+                body: JSON.stringify({ 
+                    "for": type,      // 'sysprompt' 或 'openai'
+                    "name": fileName  // 文件名
+                })
             });
             
-            if (res.ok) {
-                data = await res.json();
-            } else {
-                // 【终极兜底】：如果 API 依然 404，说明可能是很老的版本，我们直接去静态文件夹里硬读文件
-                const fallbackExt = type === 'sysprompt' ? '.json' : '.settings';
-                const folder = type === 'sysprompt' ? 'Systemprompts' : 'OpenAI Settings';
-                const staticUrl = `/${folder}/${encodeURIComponent(fileName)}${fallbackExt}`;
-                
-                const staticRes = await fetch(staticUrl);
-                if (staticRes.ok) {
-                    data = await staticRes.json();
-                } else {
-                    // 如果 .settings 读不到，尝试读 .json (OpenAI 有时用 json 保存)
-                    if (type === 'openai') {
-                        const staticRes2 = await fetch(`/${folder}/${encodeURIComponent(fileName)}.json`);
-                        if (staticRes2.ok) data = await staticRes2.json();
-                    }
-                    if (!data) throw new Error(`无法获取预设文件: ${fileName}`);
-                }
+            if (!res.ok) {
+                throw new Error("API 请求失败，状态码: " + res.status);
             }
             
-            // 解析提取数据
+            data = await res.json();
+            
+            // 解析数据
             if (type === 'sysprompt') {
                 if (data.content && data.content.trim()) allPrompts.push({ name: "主提示词 (Main Prompt)", prompt: data.content });
                 if (data.post_history && data.post_history.trim()) allPrompts.push({ name: "对话后指令 (Post-History)", prompt: data.post_history });
             } else {
+                // 读取 OpenAI / Chat Completion 预设里的 prompt_manager 数组
                 const pmArray = data.prompts || data.prompt_manager || [];
                 pmArray.forEach(p => {
                     const promptText = p.content || p.prompt || p.value || p.text;
