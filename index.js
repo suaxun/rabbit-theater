@@ -78,7 +78,6 @@ $('#tutu-mobile-critical-style-v2').remove();
 $('#tutu-mobile-critical-style-v3').remove();
 $('#tutu-mobile-critical-style-v4').remove();
 
-$('head').append(tutuMobileStyle);
 
 const tutuMobileStyle = `
 <style id="tutu-mobile-critical-style-v4">
