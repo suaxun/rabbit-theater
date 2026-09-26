@@ -73,121 +73,128 @@ tutuScenarios = [
         </style>
     `;
     $('head').append(tutuStyle);
+$('#tutu-mobile-critical-style').remove();
+$('#tutu-mobile-critical-style-v2').remove();
+$('#tutu-mobile-critical-style-v3').remove();
+$('#tutu-mobile-critical-style-v4').remove();
+
+$('head').append(tutuMobileStyle);
 
 const tutuMobileStyle = `
-<style id="tutu-mobile-critical-style-v3">
-
-    #tutu_theater_panel {
-        position: fixed !important;
-        z-index: 2147483647 !important;
-        box-sizing: border-box !important;
-    }
+<style id="tutu-mobile-critical-style-v4">
 
     @media screen and (max-width: 600px) {
         #tutu_theater_panel {
-            display: none;
-
             position: fixed !important;
 
-            top: 8px !important;
-            left: 8px !important;
-            right: 8px !important;
-            bottom: 8px !important;
+            top: 50% !important;
+            left: 50% !important;
+            right: auto !important;
+            bottom: auto !important;
 
-            width: auto !important;
-            max-width: none !important;
+            width: calc(100vw - 24px) !important;
+            max-width: calc(100vw - 24px) !important;
 
             /*
-             * 关键修复：
-             * 必须使用明确高度，不能使用 height: auto
+             * 内容少时自动收缩
+             * 内容多时最多占据手机可视区域
              */
-            height: calc(100dvh - 16px) !important;
-            max-height: calc(100dvh - 16px) !important;
+            height: auto !important;
+            max-height: calc(100dvh - 24px) !important;
             min-height: 0 !important;
 
             margin: 0 !important;
             padding: 12px !important;
 
-            transform: none !important;
-            box-sizing: border-box !important;
+            transform: translate(-50%, -50%) !important;
 
-            display: flex;
-            flex-direction: column;
+            box-sizing: border-box !important;
 
             overflow-x: hidden !important;
             overflow-y: auto !important;
 
-            background: #202124 !important;
-            background-color: #202124 !important;
-            color: #f1f1f1 !important;
+            /*
+             * 不再写死黑色，恢复酒馆主题颜色
+             */
+            background-color: var(--SmartThemeBlurTintColor, rgba(30, 30, 30, 0.95)) !important;
+            color: var(--SmartThemeBodyColor, inherit) !important;
 
-            border: 1px solid #666 !important;
+            border: 1px solid var(--SmartThemeBorderColor, #666) !important;
             border-radius: 8px !important;
 
+            backdrop-filter: blur(var(--SmartThemeBlurStrength, 8px)) !important;
+            -webkit-backdrop-filter: blur(var(--SmartThemeBlurStrength, 8px)) !important;
+
             z-index: 2147483647 !important;
-
-            backdrop-filter: none !important;
-            -webkit-backdrop-filter: none !important;
-
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8) !important;
         }
 
+        /*
+         * 面板中的内容不要统一强制成白色
+         */
+        #tutu_theater_panel,
+        #tutu_theater_panel * {
+            color: var(--SmartThemeBodyColor, inherit);
+        }
+
+        /*
+         * 输入框恢复主题样式
+         */
         #tutu_theater_panel input,
         #tutu_theater_panel textarea,
         #tutu_theater_panel select {
-            background: #303134 !important;
-            background-color: #303134 !important;
-            color: #f1f1f1 !important;
-            border-color: #777 !important;
+            background-color: var(--SmartThemeBlurTintColor, transparent) !important;
+            color: var(--SmartThemeBodyColor, inherit) !important;
+            border-color: var(--SmartThemeBorderColor, #666) !important;
         }
 
         #tutu_theater_panel input::placeholder,
         #tutu_theater_panel textarea::placeholder {
-            color: #b8b8b8 !important;
-            opacity: 1 !important;
+            color: var(--SmartThemeBodyColor, #999) !important;
+            opacity: 0.65 !important;
         }
 
+        /*
+         * 结果区域恢复主题背景
+         */
         #tutu_result_box {
-            background: #303134 !important;
-            color: #f1f1f1 !important;
-            border-color: #777 !important;
-            max-height: 30vh !important;
-            overflow-y: auto !important;
+            background: var(--SmartThemeBlurTintColor, transparent) !important;
+            color: var(--SmartThemeBodyColor, inherit) !important;
+            border-color: var(--SmartThemeBorderColor, #666) !important;
         }
 
-        #tutu_script_editor {
-            background: #292a2d !important;
-            color: #f1f1f1 !important;
-            border-color: #666 !important;
-        }
-
+        /*
+         * 卡片恢复主题背景
+         */
         .tutu-preset-card,
         .tutu-script-card {
-            background: #292a2d !important;
-            color: #f1f1f1 !important;
-            border-color: #666 !important;
+            background: var(--SmartThemeBlurTintColor, transparent) !important;
+            color: var(--SmartThemeBodyColor, inherit) !important;
+            border-color: var(--SmartThemeBorderColor, #666) !important;
         }
 
         .tutu-script-content,
         .tutu-preset-text {
-            background: #303134 !important;
-            color: #f1f1f1 !important;
+            background: var(--SmartThemeBlurTintColor, transparent) !important;
+            color: var(--SmartThemeBodyColor, inherit) !important;
         }
 
-        .tutu-tab-btn {
-            color: #f1f1f1 !important;
-        }
-
-        .tutu-tab-btn.active {
-            color: #ffffff !important;
-        }
-
+        /*
+         * 只有列表内容过多时才滚动
+         */
         #tutu_native_prompts_list,
         #tutu_library_list {
             max-height: 35vh !important;
             overflow-y: auto !important;
         }
 
+        #tutu_result_box {
+            max-height: 30vh !important;
+            overflow-y: auto !important;
+        }
+
+        /*
+         * 移动端剧本卡片允许换行
+         */
         .tutu-script-card {
             flex-wrap: wrap;
         }
@@ -207,14 +214,14 @@ const tutuMobileStyle = `
     @supports not (height: 100dvh) {
         @media screen and (max-width: 600px) {
             #tutu_theater_panel {
-                height: calc(100vh - 16px) !important;
-                max-height: calc(100vh - 16px) !important;
+                max-height: calc(100vh - 24px) !important;
             }
         }
     }
 
 </style>
 `;
+
 
 $('head').append(tutuMobileStyle);
 
@@ -790,15 +797,6 @@ catch (error) {
 
     injectTutuButton();
     $(document).on('click', function() { injectTutuButton(); });
-
-    // 打开面板
-    $(document).on('click', '#option_tutu_theater', function() {
-        const extensionsMenu = document.getElementById('extensionsMenu');
-        if(extensionsMenu) extensionsMenu.style.display = 'none';
-        
-        renderLibrary();
-        updatePresetFileDropdown(); // ⬅️ 改成调用这个初始化下拉框
-        
 $(document).on('click', '#option_tutu_theater', function() {
     const extensionsMenu = document.getElementById('extensionsMenu');
 
@@ -817,16 +815,24 @@ $(document).on('click', '#option_tutu_theater', function() {
         $panel.css({
             display: 'flex',
             position: 'fixed',
-            top: '8px',
-            left: '8px',
-            right: '8px',
-            bottom: '8px',
-            width: 'auto',
-            height: 'calc(100dvh - 16px)',
-            maxHeight: 'calc(100dvh - 16px)',
-            transform: 'none',
+
+            top: '50%',
+            left: '50%',
+            right: 'auto',
+            bottom: 'auto',
+
+            width: 'calc(100vw - 24px)',
+            maxWidth: 'calc(100vw - 24px)',
+
+            height: 'auto',
+            maxHeight: 'calc(100dvh - 24px)',
+
+            transform: 'translate(-50%, -50%)',
+
             overflowY: 'auto',
-            overflowX: 'hidden'
+            overflowX: 'hidden',
+
+            boxSizing: 'border-box'
         });
     } else {
         $panel.css({
@@ -837,8 +843,6 @@ $(document).on('click', '#option_tutu_theater', function() {
     $panel.hide().fadeIn(200);
 });
 
-
-    });
 
     // 监听类型下拉框改变：切换系统/OAI预设
     $(document).on('change', '#tutu_preset_type', function() {
