@@ -2,6 +2,7 @@ import { generateRaw } from "/script.js";
 import { getPresetManager } from "/scripts/preset-manager.js";
 
 
+
 // 注：不需要引入 oai_settings 和 power_user 了，因为我们要直接读文件
 jQuery(async () => {
     // ==========================================
@@ -215,19 +216,20 @@ jQuery(async () => {
 try {
     const manager = getPresetManager(type);
 
-    console.log("当前预设管理器：", manager);
-    console.log(
-        "预设管理器的方法：",
-        Object.keys(manager),
-        Object.getOwnPropertyNames(Object.getPrototypeOf(manager))
-    );
+    if (!manager) {
+        throw new Error("找不到预设管理器");
+    }
 
-    throw new Error("请查看控制台里的“预设管理器的方法”");
-
+    if (type === 'sysprompt') {
+        data = await manager.getPresetSettings(fileName);
+    } else {
+        data = await manager.getCompletionPresetByName(fileName);
+    }
 
     if (!data) {
         throw new Error("预设内容为空");
     }
+
 
 
             
