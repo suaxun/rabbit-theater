@@ -1,74 +1,36 @@
 /* ==========================================
-   兔兔小剧场
-   主面板基础样式
+   主面板
    ========================================== */
 
 #tutu_theater_panel {
     display: none;
-
     position: fixed;
 
     top: 50%;
     left: 50%;
-    right: auto;
-    bottom: auto;
-
     transform: translate(-50%, -50%);
 
     width: 550px;
     max-width: calc(100vw - 30px);
-
     height: auto;
-    max-height: calc(100vh - 30px);
+    max-height: calc(100vh - 60px);
 
     box-sizing: border-box;
-
     padding: 20px;
 
-    overflow-x: hidden;
-    overflow-y: auto;
+    overflow: hidden;
 
     flex-direction: column;
-    gap: 10px;
 
-    background-color: var(
-        --SmartThemeBlurTintColor,
-        rgba(30, 30, 30, 0.95)
-    );
-
+    background-color: var(--SmartThemeBlurTintColor, rgba(30, 30, 30, 0.95));
     color: var(--SmartThemeBodyColor);
-
     border: 1px solid var(--SmartThemeBorderColor);
     border-radius: 10px;
 
     z-index: 999999;
-
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
-
     backdrop-filter: blur(var(--SmartThemeBlurStrength, 8px));
     -webkit-backdrop-filter: blur(var(--SmartThemeBlurStrength, 8px));
-}
-
-/* ==========================================
-   面板头部
-   ========================================== */
-
-#tutu_theater_panel h3 {
-    margin: 0;
-    font-size: 1.2em;
-
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.tutu-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-
-    border-bottom: 1px solid var(--SmartThemeBorderColor);
-    padding-bottom: 5px;
 }
 
 /* ==========================================
@@ -77,20 +39,17 @@
 
 .tutu-tab-nav {
     display: flex;
-
     border-bottom: 1px solid var(--SmartThemeBorderColor);
-    margin-bottom: 15px;
+    margin-bottom: 10px;
+    flex-shrink: 0;
 }
 
 .tutu-tab-btn {
     flex: 1;
-
     text-align: center;
     padding: 8px;
-
     cursor: pointer;
     opacity: 0.6;
-
     transition: 0.2s;
     font-weight: bold;
 }
@@ -107,29 +66,16 @@
 
 .tutu-tab-content {
     display: none;
-
     flex-direction: column;
     gap: 10px;
-
     min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    flex: 1;
 }
 
 .tutu-tab-content.active {
     display: flex;
-}
-
-/* ==========================================
-   输入框和下拉框
-   ========================================== */
-
-#tutu_theater_panel input,
-#tutu_theater_panel textarea,
-#tutu_theater_panel select {
-    box-sizing: border-box;
-    max-width: 100%;
-
-    border-color: var(--SmartThemeBorderColor);
-    color: var(--SmartThemeBodyColor);
 }
 
 /* ==========================================
@@ -138,29 +84,46 @@
 
 #tutu_result_box {
     min-height: 100px;
-    max-height: 250px;
-
+    flex: 1;
     box-sizing: border-box;
-
     overflow-y: auto;
-
-    background: var(
-        --SmartThemeBlurTintColor,
-        rgba(0, 0, 0, 0.2)
-    );
-
+    background: var(--SmartThemeBlurTintColor, rgba(0, 0, 0, 0.2));
     color: var(--SmartThemeBodyColor);
-
     border: 1px solid var(--SmartThemeBorderColor);
     border-radius: 5px;
-
     padding: 10px;
-
     white-space: pre-wrap;
     word-break: break-word;
-
     font-size: 0.9em;
     user-select: text;
+}
+
+/* ==========================================
+   剧本库列表 - 关键：可滚动
+   ========================================== */
+
+#tutu_library_list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-right: 5px;
+}
+
+/* 滚动条美化 */
+#tutu_library_list::-webkit-scrollbar,
+#tutu_result_box::-webkit-scrollbar,
+#tutu_native_prompts_list::-webkit-scrollbar {
+    width: 6px;
+}
+
+#tutu_library_list::-webkit-scrollbar-thumb,
+#tutu_result_box::-webkit-scrollbar-thumb,
+#tutu_native_prompts_list::-webkit-scrollbar-thumb {
+    background: var(--SmartThemeQuoteColor);
+    border-radius: 5px;
 }
 
 /* ==========================================
@@ -170,58 +133,21 @@
 .tutu-preset-card,
 .tutu-script-card {
     box-sizing: border-box;
-
     width: 100%;
     min-width: 0;
-
     padding: 10px;
-
-    background: var(
-        --SmartThemeBlurTintColor,
-        transparent
-    );
-
+    background: var(--SmartThemeBlurTintColor, transparent);
     color: var(--SmartThemeBodyColor);
-
     border: 1px solid var(--SmartThemeBorderColor);
     border-radius: 5px;
-
     transition: 0.2s;
+    flex-shrink: 0;
 }
 
 .tutu-preset-card:hover,
 .tutu-script-card:hover {
     background: rgba(255, 255, 255, 0.05);
 }
-
-/* 剧本卡片
-/* ==========================================
-   移动端适配
-   ========================================== */
-
-.tutu-mobile-mode {
-    top: 50% !important;
-    left: 50% !important;
-    right: auto !important;
-    bottom: auto !important;
-
-    transform: translate(-50%, -50%) !important;
-
-    width: calc(100vw - 20px) !important;
-    max-width: calc(100vw - 20px) !important;
-
-    height: calc(100vh - 80px) !important;
-    max-height: calc(100vh - 80px) !important;
-
-    border-radius: 10px !important;
-
-    padding: 15px !important;
-    box-sizing: border-box !important;
-    overflow-y: auto !important;
-}
-/* ==========================================
-   剧本卡片内部布局
-   ========================================== */
 
 .tutu-script-card {
     display: flex;
@@ -253,7 +179,7 @@
 .tutu-script-content {
     margin-top: 8px;
     padding: 8px;
-    background: var(--SmartThemeBlurTintColor, rgba(0,0,0,0.2));
+    background: var(--SmartThemeBlurTintColor, rgba(0, 0, 0, 0.2));
     border-radius: 5px;
     font-size: 0.85em;
     white-space: pre-wrap;
@@ -291,6 +217,7 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 10px;
+    flex-shrink: 0;
 }
 
 .tutu-library-title {
@@ -309,6 +236,7 @@
     border: 1px dashed var(--SmartThemeBorderColor);
     border-radius: 8px;
     margin-bottom: 10px;
+    flex-shrink: 0;
 }
 
 .tutu-editor-header {
@@ -328,9 +256,46 @@
     font-size: 0.95em;
 }
 
+.tutu-preset-name {
+    font-weight: bold;
+    color: var(--SmartThemeQuoteColor);
+    font-size: 1.1em;
+    margin-bottom: 5px;
+}
+
+.tutu-preset-text {
+    font-size: 0.85em;
+    opacity: 0.8;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 80px;
+    overflow-y: auto;
+    margin-bottom: 5px;
+    background: var(--SmartThemeBlurTintColor, transparent);
+    color: var(--SmartThemeBodyColor);
+    padding: 5px;
+    border-radius: 5px;
+}
+
 /* ==========================================
-   移动端剧本卡片按钮竖排
+   移动端
    ========================================== */
+
+.tutu-mobile-mode {
+    top: 50% !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: translate(-50%, -50%) !important;
+
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px) !important;
+    height: calc(100vh - 100px) !important;
+    max-height: calc(100vh - 100px) !important;
+
+    padding: 15px !important;
+    border-radius: 10px !important;
+}
 
 @media (max-width: 600px) {
     .tutu-script-card {
@@ -344,5 +309,9 @@
         padding-top: 8px;
         margin-top: 5px;
     }
-}
 
+    .tutu-tab-btn {
+        font-size: 0.85em;
+        padding: 6px 4px;
+    }
+}
