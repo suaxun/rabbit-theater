@@ -316,3 +316,134 @@
         padding: 6px 4px;
     }
 }
+/* 设置页面 */
+.tutu-settings-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.tutu-settings-title {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: var(--SmartThemeQuoteColor);
+    margin-bottom: 5px;
+}
+
+.tutu-settings-label {
+    font-weight: bold;
+    opacity: 0.85;
+    margin-top: 5px;
+}
+
+.tutu-api-help {
+    font-size: 0.85em;
+    opacity: 0.7;
+    line-height: 1.5;
+}
+
+.tutu-api-help code {
+    color: var(--SmartThemeQuoteColor);
+}
+
+.tutu-api-preset-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.tutu-api-preset-row .text_pole {
+    flex: 1;
+    margin: 0;
+}
+
+/* 生成结果区域 */
+.tutu-result-box {
+    min-height: 250px;
+    max-height: 500px;
+    overflow: hidden;
+    background: var(--SmartThemeBlurTintColor);
+    color: var(--SmartThemeBodyColor);
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 5px;
+    padding: 10px;
+    font-size: 0.95em;
+    user-select: text;
+}
+
+.tutu-result-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--SmartThemeBorderColor);
+}
+
+.tutu-result-mode-buttons {
+    display: flex;
+    gap: 5px;
+}
+
+.tutu-result-mode-btn {
+    padding: 4px 8px;
+    font-size: 0.8em;
+}
+
+.tutu-result-mode-btn.active {
+    background: var(--SmartThemeQuoteColor);
+    color: #fff;
+}
+
+.tutu-result-preview {
+    min-height: 220px;
+    max-height: 400px;
+    overflow: auto;
+    background: rgba(0, 0, 0, 0.08);
+    border-radius: 4px;
+}
+
+.tutu-result-preview iframe {
+    display: block;
+    width: 100%;
+    min-height: 350px;
+    border: none;
+    background: #fff;
+    border-radius: 4px;
+}
+
+.tutu-result-preview .tutu-plain-preview {
+    white-space: pre-wrap;
+    word-break: break-word;
+    padding: 10px;
+}
+
+.tutu-result-placeholder {
+    padding: 20px;
+    opacity: 0.6;
+}
+
+.tutu-result-source {
+    display: none;
+    max-height: 400px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin: 0;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
+    font-family: monospace;
+}
+
+@media (max-width: 600px) {
+    .tutu-api-preset-row {
+        flex-wrap: wrap;
+    }
+
+    .tutu-result-toolbar {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
