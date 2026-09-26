@@ -1,5 +1,11 @@
-import { generateRaw } from "/script.js";
+import {
+    generateRaw,
+    world_names,
+    loadWorldInfo,
+} from "/script.js";
+
 import { getPresetManager } from "/scripts/preset-manager.js";
+
 
 
 
@@ -90,10 +96,10 @@ jQuery(async () => {
             <!-- TAB 3: 多选批量导入系统预设 -->
             <div id="tutu_tab_import" class="tutu-tab-content">
                 <div style="display:flex; gap:10px; margin-bottom: 10px;">
-                    <select id="tutu_preset_type" class="text_pole" style="flex: 1; margin: 0;">
-                        <option value="sysprompt">系统提示词 (System Prompts)</option>
-                        <option value="openai">对话补全 (Chat Completion)</option>
-                    </select>
+<select id="tutu_preset_type" class="text_pole" style="flex: 1; margin: 0;">
+    <option value="openai" selected>对话补全预设 (Chat Completion)</option>
+    <option value="worldbook">世界书 (World Info)</option>
+</select>
                     <select id="tutu_preset_file" class="text_pole" style="flex: 2; margin: 0;">
                         <!-- JS 动态填充下拉列表 -->
                     </select>
@@ -125,41 +131,76 @@ jQuery(async () => {
     // ==========================================
     // 3. 核心逻辑函数
     // ==========================================
-    // 根据选择的类型，读取 ST 原生下拉框里的选项来填充我们的文件下拉框
-    function updatePresetFileDropdown() {
-        const type = $('#tutu_preset_type').val();
-        const $fileSelect = $('#tutu_preset_file');
-        $fileSelect.empty();
-        
-        // 恢复直接抓取 ST 界面下拉框的做法，避开 API 版本差异，最稳妥！
-        const sourceSelector = type === 'sysprompt' ? '#sysprompt_select' : '#settings_preset_openai';
-        
-$(sourceSelector + ' option').each(function() {
-    const val = $(this).val();
-    const text = $(this).text().trim();
+function updatePresetFileDropdown() {
+    const type = $('#tutu_preset_type').val(); // 'worldbook' 或 'openai'
+    const $fileSelect = $('#tutu_preset_file');
 
-    // 跳过空选项
-    if (text && val !== undefined) {
-        // 使用预设名称作为 value，而不是原生下拉框的数字下标
-        $fileSelect.append(
-            $('<option>', {
-                value: text,
-                text: text
-            })
-        );
-    }
-});
+    $fileSelect.empty();
 
-// 默认选中当前 ST 正在使用的那个预设
-const currentActiveName = $(sourceSelector + ' option:selected').text().trim();
+    if (type === 'worldbook') {
+        // 读取 SillyTavern 的世界书列表
+        const worldBooks = Array.isArray(world_names) ? world_names : [];
 
-if (currentActiveName) {
-    $fileSelect.val(currentActiveName);
-}
+        if (worldBooks.length === 0) {
+            $fileSelect.append(
+                $('<option>', {
+                    value: '',
+                    text: '没有找到世界书'
+                })
+            );
 
-        
+            $('#tutu_native_prompts_list').html(
+                '<div style="text-align:center; padding:20px; opacity:0.7;">没有找到世界书</div>'
+            );
+
+            return;
+        }
+
+        worldBooks.forEach(worldBookName => {
+            $fileSelect.append(
+                $('<option>', {
+                    value: worldBookName,
+                    text: worldBookName
+                })
+            );
+        });
+
+        // 默认选中第一本世界书
+        $fileSelect.prop('selectedIndex', 0);
+
         fetchAndRenderNativePrompts();
+        return;
     }
+
+    // 对话补全预设
+    const sourceSelector = '#settings_preset_openai';
+
+    $(sourceSelector + ' option').each(function () {
+        const val = $(this).val();
+        const text = $(this).text().trim();
+
+        // 跳过空选项
+        if (text && val !== undefined) {
+            $fileSelect.append(
+                $('<option>', {
+                    value: text,
+                    text: text
+                })
+            );
+        }
+    });
+
+    // 默认选中当前正在使用的对话补全预设
+    const currentActiveName = $(sourceSelector + ' option:selected')
+        .text()
+        .trim();
+
+    if (currentActiveName) {
+        $fileSelect.val(currentActiveName);
+    }
+
+    fetchAndRenderNativePrompts();
+}
 
 
 
@@ -222,50 +263,110 @@ if (currentActiveName) {
         $list.html('<div style="text-align:center; padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i> 读取中...</div>');
         $('#tutu_select_all').prop('checked', false);
 
-        let allPrompts = [];
-        let data = null;
-        
+let allPrompts = [];
+let data = null;
+
 try {
-    const manager = getPresetManager(type);
+    // ================================
+    // 世界书
+    // ================================
+    if (type === 'worldbook') {
+        data = await loadWorldInfo(fileName);
 
-    if (!manager) {
-        throw new Error("找不到预设管理器");
+        if (!data) {
+            throw new Error('世界书内容为空');
+        }
+
+        console.log('读取到的世界书数据：', data);
+
+        // SillyTavern 世界书的 entries 通常是对象：
+        // {
+        //     uid1: {...},
+        //     uid2: {...}
+        // }
+        const entries = Array.isArray(data.entries)
+            ? data.entries
+            : Object.values(data.entries || {});
+
+        entries.forEach((entry, index) => {
+            if (!entry) return;
+
+            const promptText = String(entry.content || '').trim();
+
+            // 没有正文的条目不导入
+            if (!promptText) return;
+
+            let entryName =
+                entry.comment ||
+                entry.name ||
+                (Array.isArray(entry.key)
+                    ? entry.key.join(', ')
+                    : entry.key) ||
+                `世界书条目 ${index + 1}`;
+
+            // 给禁用条目加一个标记，但仍然允许用户手动选择导入
+            if (entry.enabled === false) {
+                entryName = `🚫 [禁用] ${entryName}`;
+            }
+
+            allPrompts.push({
+                name: entryName,
+                prompt: promptText
+            });
+        });
     }
 
-    if (type === 'sysprompt') {
-        data = await manager.getPresetSettings(fileName);
-        console.log("读取到的预设数据：", data);
-    } else {
+    // ================================
+    // 对话补全预设
+    // ================================
+    else if (type === 'openai') {
+        const manager = getPresetManager('openai');
+
+        if (!manager) {
+            throw new Error('找不到对话补全预设管理器');
+        }
+
         data = await manager.getCompletionPresetByName(fileName);
-    }
 
-    if (!data) {
-        throw new Error("预设内容为空");
-    }
+        if (!data) {
+            throw new Error('对话补全预设内容为空');
+        }
 
+        console.log('读取到的对话补全预设数据：', data);
 
+        const pmArray = data.prompts || data.prompt_manager || [];
 
-            
-            // 解析数据 (为了兼容性，补充了 fallback 字段名)
-            if (type === 'sysprompt') {
-                const mainPrompt = data.content || data.system_prompt || "";
-                const postHistory = data.post_history || data.post_history_instructions || "";
-                
-                if (mainPrompt.trim()) allPrompts.push({ name: "主提示词 (Main Prompt)", prompt: mainPrompt });
-                if (postHistory.trim()) allPrompts.push({ name: "对话后指令 (Post-History)", prompt: postHistory });
-            } else {
-                // 读取 OpenAI / Chat Completion 预设里的 prompt_manager 数组
-                const pmArray = data.prompts || data.prompt_manager || [];
-                pmArray.forEach(p => {
-                    const promptText = p.content || p.prompt || p.value || p.text;
-                    if (p.name && promptText) allPrompts.push({ name: p.name, prompt: promptText });
+        pmArray.forEach(p => {
+            if (!p) return;
+
+            const promptText =
+                p.content ||
+                p.prompt ||
+                p.value ||
+                p.text ||
+                '';
+
+            if (p.name && String(promptText).trim()) {
+                allPrompts.push({
+                    name: p.name,
+                    prompt: String(promptText)
                 });
             }
-        } catch (error) {
-            console.error("读取预设失败:", error);
-            $list.html('<div style="text-align:center; color:red; padding: 20px;">读取预设失败，请检查控制台。</div>');
-            return;
-        }
+        });
+    }
+}
+catch (error) {
+    console.error('读取预设或世界书失败:', error);
+
+    $list.html(
+        '<div style="text-align:center; color:red; padding:20px;">' +
+        '读取失败，请检查控制台。' +
+        '</div>'
+    );
+
+    return;
+}
+
 
 
         if (allPrompts.length === 0) {
