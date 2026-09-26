@@ -214,11 +214,14 @@ jQuery(async () => {
         
         try {
             // 👇 1. 获取管理器
+            // 👇 1. 获取管理器
             const manager = getPresetManager(type);
             if (!manager) throw new Error("找不到预设管理器");
 
-            // 👇 2. 直接获取预设对象内容！代替原本的 fetch 请求
-            data = manager.getPreset(fileName);
+            // 👇 2. 直接获取预设对象内容！从 presets 属性对象中读取
+            // 为了兼容不同版本的 SillyTavern，写一个双重保险：
+            data = typeof manager.getPreset === 'function' ? manager.getPreset(fileName) : manager.presets[fileName];
+
             
             if (!data) {
                 throw new Error("预设内容为空");
