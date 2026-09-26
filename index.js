@@ -219,26 +219,8 @@ try {
         throw new Error("找不到预设管理器");
     }
 
-    const response = await fetch('/api/presets/get', {
-        method: 'POST',
-        headers: {
-            ...getRequestHeaders(),
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            apiId: type === 'sysprompt'
-    ? 'sysprompt'
-    : 'openai',
-            name: fileName,
-        }),
-    });
+    data = await manager.getPreset(fileName);
 
-    if (!response.ok) {
-        throw new Error(`读取预设失败：HTTP ${response.status}`);
-    }
-
-    const result = await response.json();
-    data = result?.preset ?? result;
 
     if (!data) {
         throw new Error("预设内容为空");
