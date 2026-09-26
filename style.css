@@ -43,3 +43,159 @@
     white-space: pre-wrap;
     font-size: 0.9em;
 }
+/* ============================= */
+/* 兔兔小剧场：剧本库排版 */
+/* ============================= */
+
+/* 每张剧本卡片使用横向布局 */
+.tutu-script-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* 剧本内容区域占据剩余空间 */
+.tutu-script-main {
+    flex: 1;
+    min-width: 0;
+}
+
+/* 剧本名称 */
+.tutu-script-name {
+    font-weight: bold;
+    color: var(--SmartThemeQuoteColor);
+    font-size: 1.05em;
+    margin-bottom: 4px;
+    word-break: break-word;
+}
+
+/* 剧本简介 */
+.tutu-script-desc {
+    font-size: 0.85em;
+    opacity: 0.75;
+    word-break: break-word;
+}
+
+/* 剧本正文 */
+.tutu-script-content {
+    margin-top: 8px;
+    padding: 8px;
+    max-height: 150px;
+    overflow-y: auto;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 5px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.9em;
+}
+
+/* 操作按钮区域放到卡片右侧 */
+.tutu-script-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 5px;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+/* 纯图标按钮 */
+.tutu-icon-btn {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    min-width: 32px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+/* 鼠标悬停效果 */
+.tutu-icon-btn:hover {
+    transform: translateY(-1px);
+}
+
+/* 删除按钮使用警告色 */
+.tutu-delete-script-btn {
+    color: #ff7777;
+}
+
+.tutu-delete-script-btn:hover {
+    background-color: rgba(255, 70, 70, 0.2);
+    color: #ffaaaa;
+}
+
+/* 新建剧本区域 */
+.tutu-library-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.tutu-library-title {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-weight: bold;
+    font-size: 1.05em;
+}
+
+/* 编辑器头部 */
+.tutu-editor-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+/* 小型文字按钮 */
+.tutu-small-btn {
+    padding: 5px 10px !important;
+    font-size: 0.85em;
+}
+
+/* 保存按钮 */
+.tutu-save-script-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+/* 空剧本提示 */
+.tutu-empty-library {
+    text-align: center;
+    opacity: 0.7;
+    padding: 30px 10px;
+}
+
+.tutu-empty-library i {
+    display: block;
+    font-size: 28px;
+    margin-bottom: 8px;
+}
+@media (max-width: 600px) {
+    .tutu-script-card {
+        gap: 8px;
+    }
+
+    .tutu-script-actions {
+        gap: 3px;
+    }
+
+    .tutu-icon-btn {
+        width: 28px;
+        height: 28px;
+        min-width: 28px !important;
+        font-size: 12px;
+    }
+}
