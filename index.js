@@ -484,6 +484,37 @@ function isProbablyHtml(text) {
         /<(div|section|article|main|body|style|table|h1|h2|p|img|button|form)[\s>]/i.test(value)
     );
 }
+function cleanGeneratedContent(content) {
+    let text = String(content || '').trim();
+
+    if (!text) {
+        return '';
+    }
+
+    /*
+     * 去除开头可能存在的说明文字。
+     *
+     * 只有当内容中确实存在代码围栏时才处理，
+     * 避免误删普通文字。
+     */
+    const fencedMatch = text.match(
+        /```(?:html|HTML|xml|XML)?\s*([\s\S]*?)```/
+    );
+
+    if (fencedMatch) {
+        text = fencedMatch[1].trim();
+    } else {
+        /*
+         * 没有完整代码围栏时，单独清除首尾围栏。
+         */
+        text = text
+            .replace(/^\s*```(?:html|HTML|xml|XML)?\s*\r?\n?/, '')
+            .replace(/\r?\n?\s*```\s*$/, '')
+            .trim();
+    }
+
+    return text;
+}
 
 function showTutuResult(content) {
     content = String(content || '');
@@ -1436,7 +1467,9 @@ ${userScenario}
             });
         }
 
-        showTutuResult(result);
+        result = cleanGeneratedContent(result);
+showTutuResult(result);
+
     } catch (error) {
         console.error('小剧场生成失败：', error);
 
