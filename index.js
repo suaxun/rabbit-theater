@@ -645,7 +645,11 @@ catch (error) {
         renderLibrary();
         updatePresetFileDropdown(); // ⬅️ 改成调用这个初始化下拉框
         
-        $('#tutu_theater_panel').fadeIn(200).css('display', 'flex'); 
+        $('#tutu_theater_panel')
+    .css('display', 'flex')
+    .hide()
+    .fadeIn(200);
+
     });
 
     // 监听类型下拉框改变：切换系统/OAI预设
@@ -659,9 +663,10 @@ catch (error) {
     });
 
 
-    $('#tutu_close').on('click', function() {
-        $('#tutu_theater_panel').fadeOut(200);
-    });
+$(document).on('click', '#tutu_close', function() {
+    $('#tutu_theater_panel').fadeOut(200);
+});
+
 
     // 全选/取消全选
     $('#tutu_select_all').on('change', function() {
