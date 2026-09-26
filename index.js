@@ -132,6 +132,63 @@ tutuScenarios = [
             <!-- TAB 1: 生成区 -->
             <div id="tutu_tab_generate" class="tutu-tab-content active">
                 <textarea id="tutu_prompt" class="text_pole textarea_compact" rows="5" placeholder="输入情境，或者从剧本库加载..." style="width: 100%; box-sizing: border-box;"></textarea>
+                <!-- 当前角色上下文 -->
+<div id="tutu_character_context_box" class="tutu-context-box">
+
+    <div class="tutu-context-title">
+        <i class="fa-solid fa-user"></i>
+        当前角色信息
+    </div>
+
+    <div id="tutu_current_character_name" class="tutu-context-character">
+        当前角色：读取中...
+    </div>
+
+    <div class="tutu-context-description-label">
+        角色描述会自动读取
+    </div>
+
+    <div id="tutu_character_description_preview"
+         class="tutu-context-description">
+        正在读取角色描述...
+    </div>
+
+    <div class="tutu-context-title" style="margin-top:10px;">
+        <i class="fa-solid fa-book"></i>
+        当前角色关联世界书
+    </div>
+
+    <div id="tutu_character_worldbook_name"
+         class="tutu-context-worldbook">
+        正在读取世界书...
+    </div>
+
+    <div id="tutu_character_worldbook_entries"
+         class="tutu-context-worldbook-entries">
+        正在读取世界书条目...
+    </div>
+
+    <label class="tutu-history-option">
+        <input type="checkbox" id="tutu_include_history">
+        <span>读取历史聊天记录</span>
+    </label>
+
+    <div id="tutu_history_limit_box" style="display:none;">
+        <label class="tutu-settings-label">
+            读取最近多少条消息
+        </label>
+
+        <input
+            id="tutu_history_limit"
+            class="text_pole"
+            type="number"
+            min="1"
+            max="100"
+            value="20"
+        >
+    </div>
+
+</div>
                 <div id="tutu_generate_btn" class="menu_button" style="text-align: center; justify-content: center; padding: 10px;">
                     <i class="fa-solid fa-wand-magic-sparkles"></i> 导演！Action！
                 </div>
@@ -280,16 +337,23 @@ tutuScenarios = [
 
         <div id="tutu_secondary_api_settings">
 
-            <label class="tutu-settings-label">
-                副 API 地址
-            </label>
+<label class="tutu-settings-label">
+    副 API 地址
+</label>
 
-            <input
-                id="tutu_secondary_endpoint"
-                class="text_pole"
-                type="text"
-                placeholder="例如：https://api.openai.com/v1/chat/completions"
-            >
+<input
+    id="tutu_secondary_endpoint"
+    class="text_pole"
+    type="text"
+    placeholder="例如：https://api.openai.com/v1"
+>
+
+<div class="tutu-api-help">
+    这里只需要填写到 <code>/v1</code>。
+    程序会自动请求：
+    <code>/v1/chat/completions</code>
+</div>
+
 
             <label class="tutu-settings-label">
                 API Key
@@ -592,18 +656,391 @@ function showTutuResultMode(mode) {
         $('#tutu_show_source_btn').removeClass('active');
     }
 }
+let tutuCurrentCharacterContext = {
+    character: null,
+    characterName: 'AI',
+    description: '',
+    worldBookName: '',
+    worldEntries: []
+};
+
+function getCurrentTutuCharacter() {
+    const context = SillyTavern.getContext();
+
+    const character =
+        context.characterId !== undefined &&
+        context.characters?.[context.characterId]
+            ? context.characters[context.characterId]
+            : null;
+
+    return {
+        context,
+        character
+    };
+}
+
+function getCharacterDescription(character) {
+    if (!character) {
+        return '';
+    }
+
+    return String(
+        character.description ||
+        character.data?.description ||
+        ''
+    ).trim();
+}
+
+function getCharacterWorldBookName(character) {
+    if (!character) {
+        return '';
+    }
+
+    /*
+     * 不同版本的 SillyTavern 可能使用不同位置保存角色世界书名称，
+     * 所以这里做多个兼容读取。
+     */
+    const worldBookName =
+        character.data?.extensions?.world ||
+        character.data?.extensions?.world_info ||
+        character.data?.extensions?.worldbook ||
+        character.extensions?.world ||
+        character.extensions?.world_info ||
+        character.extensions?.worldbook ||
+        '';
+
+    return String(worldBookName || '').trim();
+}
+
+function getWorldEntryName(entry, index) {
+    let name =
+        entry.comment ||
+        entry.name ||
+        (
+            Array.isArray(entry.key)
+                ? entry.key.join(', ')
+                : entry.key
+        ) ||
+        `世界书条目 ${index + 1}`;
+
+    if (entry.enabled === false) {
+        name = `🚫 [禁用] ${name}`;
+    }
+
+    return String(name);
+}
+
+function renderTutuCharacterBasicInfo() {
+    const character = tutuCurrentCharacterContext.character;
+
+    if (!character) {
+        $('#tutu_current_character_name').text('当前角色：未找到角色');
+        $('#tutu_character_description_preview').text('没有找到当前角色描述');
+        return;
+    }
+
+    $('#tutu_current_character_name').text(
+        `当前角色：${tutuCurrentCharacterContext.characterName}`
+    );
+
+    $('#tutu_character_description_preview').text(
+        tutuCurrentCharacterContext.description || '当前角色没有填写角色描述'
+    );
+}
+
+function renderTutuWorldBookEntries() {
+    const $list = $('#tutu_character_worldbook_entries');
+    $list.empty();
+
+    const worldBookName = tutuCurrentCharacterContext.worldBookName;
+    const entries = tutuCurrentCharacterContext.worldEntries;
+
+    if (!worldBookName) {
+        $('#tutu_character_worldbook_name').text(
+            '当前角色没有绑定角色世界书'
+        );
+
+        $list.html(`
+            <div style="opacity:0.7;">
+                没有可选择的世界书条目
+            </div>
+        `);
+
+        return;
+    }
+
+    $('#tutu_character_worldbook_name').text(
+        `世界书：${worldBookName}`
+    );
+
+    if (!entries.length) {
+        $list.html(`
+            <div style="opacity:0.7;">
+                世界书中没有找到可用条目
+            </div>
+        `);
+
+        return;
+    }
+
+    entries.forEach((entry, index) => {
+        const name = escapeHtml(entry.name);
+        const content = escapeHtml(entry.content);
+
+        const $item = $(`
+            <label class="tutu-world-entry-item">
+                <input
+                    type="checkbox"
+                    class="tutu-character-world-entry-checkbox"
+                    data-index="${index}"
+                >
+
+                <div>
+                    <div class="tutu-world-entry-name">
+                        ${name}
+                    </div>
+
+                    <div class="tutu-world-entry-preview">
+                        ${content}
+                    </div>
+                </div>
+            </label>
+        `);
+
+        $list.append($item);
+    });
+}
+
+async function refreshTutuCharacterContext() {
+    const { character } = getCurrentTutuCharacter();
+
+
+    const context = SillyTavern.getContext();
+
+    const characterName =
+        character?.name ||
+        character?.data?.name ||
+        'AI';
+
+    const description = getCharacterDescription(character);
+    const worldBookName = getCharacterWorldBookName(character);
+
+    tutuCurrentCharacterContext = {
+        character,
+        characterName,
+        description,
+        worldBookName,
+        worldEntries: []
+    };
+
+    renderTutuCharacterBasicInfo();
+
+    if (!worldBookName) {
+        renderTutuWorldBookEntries();
+        return;
+    }
+
+    $('#tutu_character_worldbook_name').text(
+        `世界书：${worldBookName}`
+    );
+
+    $('#tutu_character_worldbook_entries').html(`
+        <div style="opacity:0.7;">
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            正在读取世界书条目...
+        </div>
+    `);
+
+    try {
+        const data = await loadWorldInfo(worldBookName);
+
+        if (!data) {
+            throw new Error('世界书数据为空');
+        }
+
+        const rawEntries = Array.isArray(data.entries)
+            ? data.entries
+            : Object.values(data.entries || {});
+
+        tutuCurrentCharacterContext.worldEntries = rawEntries
+            .map((entry, index) => {
+                if (!entry) {
+                    return null;
+                }
+
+                const content = String(entry.content || '').trim();
+
+                if (!content) {
+                    return null;
+                }
+
+                return {
+                    name: getWorldEntryName(entry, index),
+                    content
+                };
+            })
+            .filter(Boolean);
+
+        renderTutuWorldBookEntries();
+    } catch (error) {
+        console.error('读取角色世界书失败：', error);
+
+        $('#tutu_character_worldbook_entries').html(`
+            <div style="color:red;">
+                读取世界书失败：${escapeHtml(error.message || error)}
+            </div>
+        `);
+    }
+}
+
+function getSelectedTutuWorldEntries() {
+    const selectedEntries = [];
+
+    $('.tutu-character-world-entry-checkbox:checked').each(function () {
+        const index = Number($(this).data('index'));
+        const entry = tutuCurrentCharacterContext.worldEntries[index];
+
+        if (entry) {
+            selectedEntries.push(entry);
+        }
+    });
+
+    return selectedEntries;
+}
+
+function getTutuHistoryText() {
+    const $checkbox = $('#tutu_include_history');
+
+    if (!$checkbox.is(':checked')) {
+        return '';
+    }
+
+    const context = SillyTavern.getContext();
+    const chat = Array.isArray(context.chat)
+        ? context.chat
+        : [];
+
+    let limit = Number($('#tutu_history_limit').val());
+
+    if (!Number.isFinite(limit) || limit <= 0) {
+        limit = 20;
+    }
+
+    limit = Math.min(Math.max(limit, 1), 100);
+
+    const messages = chat.slice(-limit);
+
+    if (!messages.length) {
+        return '当前没有可读取的历史聊天记录。';
+    }
+
+    return messages
+        .map((message, index) => {
+            const name =
+                message.name ||
+                (message.is_user ? '用户' : '角色');
+
+            const content =
+                message.mes ||
+                message.content ||
+                '';
+
+            return `[${index + 1}] ${name}：\n${String(content).trim()}`;
+        })
+        .filter(text => text.trim())
+        .join('\n\n');
+}
+
+function buildTutuContextPrompt(userScenario) {
+    const characterName =
+        tutuCurrentCharacterContext.characterName || 'AI';
+
+    const characterDescription =
+        tutuCurrentCharacterContext.description ||
+        '当前角色没有提供角色描述。';
+
+    const selectedWorldEntries = getSelectedTutuWorldEntries();
+
+    const worldBookText = selectedWorldEntries.length
+        ? selectedWorldEntries
+            .map((entry, index) => {
+                return `【世界书条目 ${index + 1}：${entry.name}】\n${entry.content}`;
+            })
+            .join('\n\n')
+        : '用户没有选择任何世界书条目。';
+
+    const historyText = getTutuHistoryText();
+
+    let prompt = `
+请根据以下信息，写一段关于「${characterName}」的外置小剧场。
+
+【角色名称】
+${characterName}
+
+【角色描述】
+${characterDescription}
+
+【用户提供的情境】
+${userScenario}
+
+【用户选择读取的世界书条目】
+${worldBookText}
+
+要求：
+1. 这是独立于正文对话之外的番外内容。
+2. 必须尽量符合角色描述中的性格、身份、背景和说话方式。
+3. 如果提供了世界书条目，请将其中相关设定自然地融入内容。
+4. 内容要生动、有画面感、有一定故事性。
+5. 不要解释你的写作过程。
+6. 如果用户要求 HTML，请直接输出完整可渲染的 HTML。
+7. 如果输出 HTML，不要使用 Markdown 代码围栏，不要输出 \`\`\`html。
+8. 如果没有要求 HTML，则输出普通纯文字。
+`.trim();
+
+    if (historyText) {
+        prompt += `
+
+【最近历史聊天记录】
+${historyText}
+
+请参考历史聊天记录中的人物关系、语气和当前剧情，但不要机械复制历史聊天内容。
+`.trim();
+    }
+
+    return prompt;
+}
+
 async function generateBySecondaryApi(prompt) {
-    const endpoint = $('#tutu_secondary_endpoint').val().trim();
-    const apiKey = $('#tutu_secondary_api_key').val().trim();
-    const model = $('#tutu_secondary_model').val().trim();
+    let endpoint = $('#tutu_secondary_endpoint').val().trim();
 
     if (!endpoint) {
         throw new Error('没有填写副 API 地址');
     }
 
+    /*
+     * 兼容以下几种填写方式：
+     *
+     * https://api.example.com
+     * https://api.example.com/v1
+     * https://api.example.com/v1/chat/completions
+     */
+    endpoint = endpoint
+        .replace(/\/chat\/completions\/?$/i, '')
+        .replace(/\/+$/, '');
+
+    if (!/\/v1$/i.test(endpoint)) {
+        endpoint += '/v1';
+    }
+
+    endpoint += '/chat/completions';
+
+    const apiKey = $('#tutu_secondary_api_key').val().trim();
+    const model = $('#tutu_secondary_model').val().trim();
+
     if (!model) {
         throw new Error('没有填写副 API 模型名称');
     }
+
 
     const headers = {
         'Content-Type': 'application/json',
@@ -1137,6 +1574,15 @@ catch (error) {
     // ==========================================
     // 4. 事件绑定
     // ==========================================
+    // 打开或关闭历史聊天记录读取选项
+$(document).on('change', '#tutu_include_history', function () {
+    if ($(this).is(':checked')) {
+        $('#tutu_history_limit_box').show();
+    } else {
+        $('#tutu_history_limit_box').hide();
+    }
+});
+
     // 初始化设置界面
 loadTutuSettingsToUI();
 
@@ -1189,6 +1635,7 @@ $(document).on('click', '#tutu_show_source_btn', function() {
     injectTutuButton();
     $(document).on('click', function() { injectTutuButton(); });
 $(document).on('click', '#option_tutu_theater', function() {
+
     const extensionsMenu = document.getElementById('extensionsMenu');
     if (extensionsMenu) {
         extensionsMenu.style.display = 'none';
@@ -1196,6 +1643,7 @@ $(document).on('click', '#option_tutu_theater', function() {
 
     renderLibrary();
     updatePresetFileDropdown();
+    refreshTutuCharacterContext();
 
     const $panel = $('#tutu_theater_panel');
     const isMobile = window.matchMedia('(max-width: 600px)').matches;
@@ -1430,28 +1878,10 @@ $('#tutu_generate_btn').on('click', async function() {
     $('#tutu_generate_btn').addClass('disabled');
 
     try {
-        const context = SillyTavern.getContext();
+await refreshTutuCharacterContext();
 
-        const charName =
-            context.characterId !== undefined &&
-            context.characters?.[context.characterId]
-                ? context.characters[context.characterId].name
-                : 'AI';
+const aiPrompt = buildTutuContextPrompt(userScenario);
 
-        const aiPrompt = `
-请根据以下情境，写一段关于「${charName}」的外置小剧场。
-
-要求：
-1. 这是独立于正文对话之外的番外内容。
-2. 内容要生动、有画面感、有一定故事性。
-3. 不要解释你的写作过程。
-4. 如果用户要求 HTML，请直接输出完整可渲染的 HTML。
-5. 如果输出 HTML，不要使用 Markdown 代码围栏，不要输出 \`\`\`html。
-6. 如果没有要求 HTML，则输出普通纯文字。
-
-用户提供的情境：
-${userScenario}
-        `.trim();
 
         let result;
 
