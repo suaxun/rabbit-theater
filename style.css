@@ -208,14 +208,7 @@
     overflow: hidden;
 }
 
-/* 剧本列表单独滚动 */
-#tutu_library_list {
-    max-height: 45vh;
-    min-height: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding-right: 5px;
-}
+
 
 /* 美化剧本库滚动条 */
 #tutu_library_list::-webkit-scrollbar {
@@ -322,4 +315,165 @@
         min-width: 28px !important;
         font-size: 12px;
     }
+}
+/* ==========================================
+   兔兔小剧场：主题适配
+   ========================================== */
+
+/* 剧本卡片、系统预设卡片统一跟随酒馆主题 */
+.tutu-preset-card,
+.tutu-script-card {
+    background: var(--SmartThemeBlurTintColor, transparent) !important;
+    border: 1px solid var(--SmartThemeBorderColor) !important;
+    color: var(--SmartThemeBodyColor);
+}
+
+/* 如果你希望卡片完全透明，可以把上面的 background 改成：
+ *
+ * background: transparent !important;
+ */
+
+/* 剧本正文内容区域跟随主题 */
+.tutu-script-content,
+.tutu-preset-text {
+    background: var(--SmartThemeBlurTintColor, transparent) !important;
+    color: var(--SmartThemeBodyColor);
+}
+
+/* 生成结果区域跟随主题 */
+#tutu_result_box {
+    background: var(--SmartThemeBlurTintColor, transparent) !important;
+    color: var(--SmartThemeBodyColor);
+    border: 1px solid var(--SmartThemeBorderColor);
+}
+
+/* 编辑器区域跟随主题 */
+#tutu_script_editor {
+    background: var(--SmartThemeBlurTintColor, transparent);
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 6px;
+    padding: 10px;
+}
+
+/* 输入框、下拉框统一使用酒馆主题边框 */
+#tutu_theater_panel input,
+#tutu_theater_panel textarea,
+#tutu_theater_panel select {
+    border-color: var(--SmartThemeBorderColor);
+}
+
+/* ==========================================
+   移动端面板适配
+   ========================================== */
+
+@media screen and (max-width: 600px) {
+    #tutu_theater_panel {
+        /*
+         * 这里使用 !important，
+         * 因为 index.js 的 panelHtml 中写了内联样式。
+         */
+        position: fixed !important;
+
+        top: 8px !important;
+        left: 8px !important;
+        right: 8px !important;
+        bottom: 8px !important;
+
+        transform: none !important;
+
+        width: auto !important;
+        max-width: none !important;
+
+        /*
+         * 使用 border-box，避免 padding 导致实际高度超出屏幕
+         */
+        box-sizing: border-box !important;
+
+        /*
+         * 允许整个面板在手机上滚动
+         */
+        max-height: none !important;
+        height: auto !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+
+        padding: 12px !important;
+        border-radius: 8px !important;
+    }
+
+    /*
+     * 手机端标签文字稍微缩小，
+     * 防止三个标签挤在一行
+     */
+    .tutu-tab-btn {
+        font-size: 0.85em;
+        padding: 8px 3px;
+        white-space: nowrap;
+    }
+
+    /*
+     * 手机端生成结果区域不要太高
+     */
+    #tutu_result_box {
+        max-height: 35vh;
+    }
+
+    /*
+     * 手机端世界书/预设列表高度
+     */
+    #tutu_native_prompts_list {
+        max-height: 38vh !important;
+    }
+
+    /*
+     * 手机端剧本列表高度
+     */
+    #tutu_library_list {
+        max-height: 42vh !important;
+    }
+
+    /*
+     * 剧本卡片允许自动换行，避免右侧按钮把正文挤没
+     */
+    .tutu-script-card {
+        flex-wrap: wrap;
+    }
+
+    .tutu-script-main {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .tutu-script-actions {
+        width: 100%;
+        justify-content: flex-end;
+        margin-left: 0;
+    }
+}
+#tutu_theater_panel {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    width: 550px;
+    max-width: calc(100vw - 30px);
+    max-height: 90vh;
+
+    overflow: hidden;
+
+    background-color: var(--SmartThemeBlurTintColor);
+    backdrop-filter: blur(var(--SmartThemeBlurStrength));
+
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 10px;
+    padding: 20px;
+
+    z-index: 99999;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+    color: var(--SmartThemeBodyColor);
+
+    flex-direction: column;
+    box-sizing: border-box;
 }
