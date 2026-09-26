@@ -134,17 +134,29 @@ jQuery(async () => {
         // 恢复直接抓取 ST 界面下拉框的做法，避开 API 版本差异，最稳妥！
         const sourceSelector = type === 'sysprompt' ? '#sysprompt_select' : '#settings_preset_openai';
         
-        $(sourceSelector + ' option').each(function() {
-            const val = $(this).val();
-            const text = $(this).text();
-            if (val) {
-                $fileSelect.append(`<option value="${val}">${text}</option>`);
-            }
-        });
-        
-        // 默认选中当前 ST 正在使用的那个预设
-        const currentActive = $(sourceSelector).val();
-        if (currentActive) $fileSelect.val(currentActive);
+$(sourceSelector + ' option').each(function() {
+    const val = $(this).val();
+    const text = $(this).text().trim();
+
+    // 跳过空选项
+    if (text && val !== undefined) {
+        // 使用预设名称作为 value，而不是原生下拉框的数字下标
+        $fileSelect.append(
+            $('<option>', {
+                value: text,
+                text: text
+            })
+        );
+    }
+});
+
+// 默认选中当前 ST 正在使用的那个预设
+const currentActiveName = $(sourceSelector + ' option:selected').text().trim();
+
+if (currentActiveName) {
+    $fileSelect.val(currentActiveName);
+}
+
         
         fetchAndRenderNativePrompts();
     }
