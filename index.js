@@ -16,8 +16,31 @@ jQuery(async () => {
     // ==========================================
     // 0. 数据存储管理 (LocalStorage)
     // ==========================================
-    const STORAGE_KEY = 'tutu_theater_scenarios';
-    let tutuScenarios = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+const STORAGE_KEY = 'tutu_theater_scenarios';
+const SETTINGS_KEY = 'tutu_theater_settings';
+const API_PRESETS_KEY = 'tutu_theater_api_presets';
+
+function loadLocalJson(key, defaultValue) {
+    try {
+        const value = localStorage.getItem(key);
+        return value ? JSON.parse(value) : defaultValue;
+    } catch (error) {
+        console.error(`读取 LocalStorage 失败：${key}`, error);
+        return defaultValue;
+    }
+}
+
+let tutuScenarios = loadLocalJson(STORAGE_KEY, []);
+
+let tutuSettings = loadLocalJson(SETTINGS_KEY, {
+    provider: 'main',       // main：酒馆主 API，secondary：副 API
+    endpoint: '',
+    apiKey: '',
+    model: '',
+});
+
+let tutuApiPresets = loadLocalJson(API_PRESETS_KEY, []);
+
     if (tutuScenarios.length === 0) {
 tutuScenarios = [
     {
@@ -98,11 +121,13 @@ tutuScenarios = [
             </div>
             
             <!-- 标签导航 -->
-            <div class="tutu-tab-nav">
-                <div class="tutu-tab-btn active" data-tab="tutu_tab_generate">🎬 生成</div>
-                <div class="tutu-tab-btn" data-tab="tutu_tab_library">📚 我的剧本</div>
-                <div class="tutu-tab-btn" data-tab="tutu_tab_import">📥 批量导入</div>
-            </div>
+<div class="tutu-tab-nav">
+    <div class="tutu-tab-btn active" data-tab="tutu_tab_generate">🎬 生成</div>
+    <div class="tutu-tab-btn" data-tab="tutu_tab_library">📚 我的剧本</div>
+    <div class="tutu-tab-btn" data-tab="tutu_tab_import">📥 批量导入</div>
+    <div class="tutu-tab-btn" data-tab="tutu_tab_settings">⚙️ 设置</div>
+</div>
+
 
             <!-- TAB 1: 生成区 -->
             <div id="tutu_tab_generate" class="tutu-tab-content active">
@@ -110,24 +135,38 @@ tutuScenarios = [
                 <div id="tutu_generate_btn" class="menu_button" style="text-align: center; justify-content: center; padding: 10px;">
                     <i class="fa-solid fa-wand-magic-sparkles"></i> 导演！Action！
                 </div>
-                <div
-    id="tutu_result_box"
-    class="text_muted"
-    style="
-        min-height:150px;
-        max-height:250px;
-        overflow-y:auto;
-        background:var(--SmartThemeBlurTintColor);
-        color:var(--SmartThemeBodyColor);
-        border:1px solid var(--SmartThemeBorderColor);
-        border-radius:5px;
-        padding:10px;
-        white-space:pre-wrap;
-        font-size:0.95em;
-        user-select:text;
-    "
->
-这里将显示生成的小剧场内容...</div>
+<div id="tutu_result_box" class="tutu-result-box">
+
+    <div class="tutu-result-toolbar">
+        <div id="tutu_result_status" class="text_muted">
+            这里将显示生成的小剧场内容...
+        </div>
+
+        <div class="tutu-result-mode-buttons">
+            <div
+                id="tutu_show_preview_btn"
+                class="menu_button margin0 tutu-result-mode-btn active">
+                <i class="fa-solid fa-display"></i>
+                预览
+            </div>
+
+            <div
+                id="tutu_show_source_btn"
+                class="menu_button margin0 tutu-result-mode-btn">
+                <i class="fa-solid fa-code"></i>
+                源码
+            </div>
+        </div>
+    </div>
+
+    <div id="tutu_result_preview" class="tutu-result-preview">
+        <div class="tutu-result-placeholder">
+            这里将显示生成的小剧场内容...
+        </div>
+    </div>
+
+    <pre id="tutu_result_source" class="tutu-result-source"></pre>
+</div>
             </div>
 
 <!-- TAB 2: 我的剧本库 -->
@@ -221,6 +260,109 @@ tutuScenarios = [
                     <div style="text-align:center; padding: 20px;">请选择预设...</div>
                 </div>
             </div>
+<!-- TAB 4: 设置 -->
+<div id="tutu_tab_settings" class="tutu-tab-content">
+
+    <div class="tutu-settings-section">
+        <div class="tutu-settings-title">
+            <i class="fa-solid fa-robot"></i>
+            小剧场生成 API
+        </div>
+
+        <label class="tutu-settings-label">
+            生成方式
+        </label>
+
+        <select id="tutu_api_provider" class="text_pole">
+            <option value="main">使用酒馆主 API</option>
+            <option value="secondary">使用自定义副 API</option>
+        </select>
+
+        <div id="tutu_secondary_api_settings">
+
+            <label class="tutu-settings-label">
+                副 API 地址
+            </label>
+
+            <input
+                id="tutu_secondary_endpoint"
+                class="text_pole"
+                type="text"
+                placeholder="例如：https://api.openai.com/v1/chat/completions"
+            >
+
+            <label class="tutu-settings-label">
+                API Key
+            </label>
+
+            <input
+                id="tutu_secondary_api_key"
+                class="text_pole"
+                type="password"
+                placeholder="sk-..."
+            >
+
+            <label class="tutu-settings-label">
+                模型名称
+            </label>
+
+            <input
+                id="tutu_secondary_model"
+                class="text_pole"
+                type="text"
+                placeholder="例如：gpt-4o-mini"
+            >
+
+            <div class="tutu-api-help">
+                副 API 需要兼容 OpenAI Chat Completions 格式。
+                请求格式为：
+                <code>/v1/chat/completions</code>
+            </div>
+
+            <div class="tutu-api-preset-row">
+                <select id="tutu_api_preset_select" class="text_pole">
+                    <option value="">选择已保存的副 API 预设</option>
+                </select>
+
+                <div
+                    id="tutu_load_api_preset_btn"
+                    class="menu_button margin0">
+                    载入
+                </div>
+            </div>
+
+            <div class="tutu-api-preset-row">
+                <input
+                    id="tutu_api_preset_name"
+                    class="text_pole"
+                    type="text"
+                    placeholder="预设名称，例如：OpenAI"
+                >
+
+                <div
+                    id="tutu_save_api_preset_btn"
+                    class="menu_button margin0">
+                    保存预设
+                </div>
+
+                <div
+                    id="tutu_delete_api_preset_btn"
+                    class="menu_button margin0">
+                    删除预设
+                </div>
+            </div>
+
+        </div>
+
+        <div
+            id="tutu_save_settings_btn"
+            class="menu_button">
+            <i class="fa-solid fa-save"></i>
+            保存设置
+        </div>
+    </div>
+
+</div>
 
 
 
@@ -329,6 +471,331 @@ function escapeHtml(value) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
 }
+function isProbablyHtml(text) {
+    if (!text || typeof text !== 'string') {
+        return false;
+    }
+
+    const value = text.trim();
+
+    return (
+        /^<!doctype html/i.test(value) ||
+        /^<html[\s>]/i.test(value) ||
+        /<(div|section|article|main|body|style|table|h1|h2|p|img|button|form)[\s>]/i.test(value)
+    );
+}
+
+function showTutuResult(content) {
+    content = String(content || '');
+
+    $('#tutu_result_source').text(content);
+    $('#tutu_result_status').text(
+        isProbablyHtml(content)
+            ? '检测到 HTML 内容，可以切换到预览模式。'
+            : '生成完成。'
+    );
+
+    const $preview = $('#tutu_result_preview');
+    $preview.empty();
+
+    if (!content.trim()) {
+        $preview.html(`
+            <div class="tutu-result-placeholder">
+                没有生成内容。
+            </div>
+        `);
+        return;
+    }
+
+    if (isProbablyHtml(content)) {
+        const iframe = document.createElement('iframe');
+
+        /*
+         * sandbox 可以防止生成的 HTML 直接操作酒馆页面。
+         * 如果你确实需要 HTML 内的 JavaScript，
+         * 可以改成：iframe.setAttribute('sandbox', 'allow-scripts');
+         *
+         * 但不建议允许脚本操作父页面。
+         */
+        iframe.setAttribute('sandbox', '');
+
+        iframe.srcdoc = content;
+
+        $preview.append(iframe);
+
+        $('#tutu_show_preview_btn').show();
+        $('#tutu_show_source_btn').show();
+
+        showTutuResultMode('preview');
+    } else {
+        const $plain = $('<div class="tutu-plain-preview"></div>');
+        $plain.text(content);
+
+        $preview.append($plain);
+
+        $('#tutu_show_preview_btn').show();
+        $('#tutu_show_source_btn').show();
+
+        showTutuResultMode('preview');
+    }
+}
+
+function showTutuResultMode(mode) {
+    if (mode === 'source') {
+        $('#tutu_result_preview').hide();
+        $('#tutu_result_source').show();
+
+        $('#tutu_show_source_btn').addClass('active');
+        $('#tutu_show_preview_btn').removeClass('active');
+    } else {
+        $('#tutu_result_preview').show();
+        $('#tutu_result_source').hide();
+
+        $('#tutu_show_preview_btn').addClass('active');
+        $('#tutu_show_source_btn').removeClass('active');
+    }
+}
+async function generateBySecondaryApi(prompt) {
+    const endpoint = $('#tutu_secondary_endpoint').val().trim();
+    const apiKey = $('#tutu_secondary_api_key').val().trim();
+    const model = $('#tutu_secondary_model').val().trim();
+
+    if (!endpoint) {
+        throw new Error('没有填写副 API 地址');
+    }
+
+    if (!model) {
+        throw new Error('没有填写副 API 模型名称');
+    }
+
+    const headers = {
+        'Content-Type': 'application/json',
+    };
+
+    if (apiKey) {
+        headers.Authorization = `Bearer ${apiKey}`;
+    }
+
+    const response = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+            model,
+            messages: [
+                {
+                    role: 'user',
+                    content: prompt,
+                }
+            ],
+            temperature: 0.8,
+        }),
+    });
+
+    const responseText = await response.text();
+
+    if (!response.ok) {
+        throw new Error(
+            `副 API 请求失败：HTTP ${response.status}\n${responseText}`
+        );
+    }
+
+    let data;
+
+    try {
+        data = JSON.parse(responseText);
+    } catch {
+        // 如果接口直接返回纯文本，也支持
+        return responseText;
+    }
+
+    /*
+     * OpenAI Chat Completions 常见格式：
+     * {
+     *   choices: [
+     *     {
+     *       message: {
+     *         content: "..."
+     *       }
+     *     }
+     *   ]
+     * }
+     */
+
+    const result =
+        data?.choices?.[0]?.message?.content ??
+        data?.choices?.[0]?.text ??
+        data?.output_text ??
+        data?.output ??
+        data?.content ??
+        data?.text;
+
+    if (result === undefined || result === null) {
+        throw new Error(
+            '副 API 返回的数据中没有找到文本内容：\n' +
+            JSON.stringify(data, null, 2)
+        );
+    }
+
+    if (Array.isArray(result)) {
+        return result
+            .map(item => {
+                if (typeof item === 'string') return item;
+                return item?.text || item?.content || '';
+            })
+            .join('');
+    }
+
+    return String(result);
+}
+
+function saveTutuSettings() {
+    tutuSettings = {
+        provider: $('#tutu_api_provider').val() || 'main',
+        endpoint: $('#tutu_secondary_endpoint').val().trim(),
+        apiKey: $('#tutu_secondary_api_key').val().trim(),
+        model: $('#tutu_secondary_model').val().trim(),
+    };
+
+    localStorage.setItem(
+        SETTINGS_KEY,
+        JSON.stringify(tutuSettings)
+    );
+}
+
+function renderApiPresetDropdown() {
+    const $select = $('#tutu_api_preset_select');
+
+    if (!$select.length) return;
+
+    $select.empty();
+
+    $select.append(
+        $('<option>', {
+            value: '',
+            text: '选择已保存的副 API 预设'
+        })
+    );
+
+    tutuApiPresets.forEach((preset, index) => {
+        $select.append(
+            $('<option>', {
+                value: String(index),
+                text: preset.name
+            })
+        );
+    });
+}
+
+function loadTutuSettingsToUI() {
+    $('#tutu_api_provider').val(tutuSettings.provider || 'main');
+    $('#tutu_secondary_endpoint').val(tutuSettings.endpoint || '');
+    $('#tutu_secondary_api_key').val(tutuSettings.apiKey || '');
+    $('#tutu_secondary_model').val(tutuSettings.model || '');
+
+    updateSecondaryApiVisibility();
+    renderApiPresetDropdown();
+}
+
+function updateSecondaryApiVisibility() {
+    const provider = $('#tutu_api_provider').val();
+
+    if (provider === 'secondary') {
+        $('#tutu_secondary_api_settings').show();
+    } else {
+        $('#tutu_secondary_api_settings').hide();
+    }
+}
+
+function saveCurrentApiPreset() {
+    const name = $('#tutu_api_preset_name').val().trim();
+    const endpoint = $('#tutu_secondary_endpoint').val().trim();
+    const apiKey = $('#tutu_secondary_api_key').val().trim();
+    const model = $('#tutu_secondary_model').val().trim();
+
+    if (!name) {
+        toastr.warning('请输入预设名称');
+        return;
+    }
+
+    if (!endpoint) {
+        toastr.warning('请输入副 API 地址');
+        return;
+    }
+
+    if (!model) {
+        toastr.warning('请输入模型名称');
+        return;
+    }
+
+    const preset = {
+        name,
+        endpoint,
+        apiKey,
+        model,
+    };
+
+    const oldIndex = tutuApiPresets.findIndex(item => item.name === name);
+
+    if (oldIndex >= 0) {
+        tutuApiPresets[oldIndex] = preset;
+    } else {
+        tutuApiPresets.push(preset);
+    }
+
+    localStorage.setItem(
+        API_PRESETS_KEY,
+        JSON.stringify(tutuApiPresets)
+    );
+
+    renderApiPresetDropdown();
+
+    toastr.success(`副 API 预设「${name}」已保存`);
+}
+
+function loadSelectedApiPreset() {
+    const index = Number($('#tutu_api_preset_select').val());
+
+    if (!Number.isInteger(index) || !tutuApiPresets[index]) {
+        toastr.warning('请选择一个副 API 预设');
+        return;
+    }
+
+    const preset = tutuApiPresets[index];
+
+    $('#tutu_secondary_endpoint').val(preset.endpoint || '');
+    $('#tutu_secondary_api_key').val(preset.apiKey || '');
+    $('#tutu_secondary_model').val(preset.model || '');
+    $('#tutu_api_preset_name').val(preset.name || '');
+
+    toastr.success(`已载入副 API 预设：${preset.name}`);
+}
+
+function deleteSelectedApiPreset() {
+    const index = Number($('#tutu_api_preset_select').val());
+
+    if (!Number.isInteger(index) || !tutuApiPresets[index]) {
+        toastr.warning('请选择一个副 API 预设');
+        return;
+    }
+
+    const preset = tutuApiPresets[index];
+
+    if (!confirm(`确定要删除副 API 预设「${preset.name}」吗？`)) {
+        return;
+    }
+
+    tutuApiPresets.splice(index, 1);
+
+    localStorage.setItem(
+        API_PRESETS_KEY,
+        JSON.stringify(tutuApiPresets)
+    );
+
+    renderApiPresetDropdown();
+
+    toastr.success('副 API 预设已删除');
+}
+
 let editingScriptIndex = -1;
 
 function openScriptEditor(index = -1) {
@@ -633,7 +1100,45 @@ catch (error) {
     // ==========================================
     // 4. 事件绑定
     // ==========================================
-    
+    // 初始化设置界面
+loadTutuSettingsToUI();
+
+// 切换主 API / 副 API
+$(document).on('change', '#tutu_api_provider', function() {
+    updateSecondaryApiVisibility();
+});
+
+// 保存 API 设置
+$(document).on('click', '#tutu_save_settings_btn', function() {
+    saveTutuSettings();
+    toastr.success('小剧场 API 设置已保存');
+});
+
+// 保存副 API 预设
+$(document).on('click', '#tutu_save_api_preset_btn', function() {
+    saveCurrentApiPreset();
+});
+
+// 载入副 API 预设
+$(document).on('click', '#tutu_load_api_preset_btn', function() {
+    loadSelectedApiPreset();
+});
+
+// 删除副 API 预设
+$(document).on('click', '#tutu_delete_api_preset_btn', function() {
+    deleteSelectedApiPreset();
+});
+
+// 结果显示为预览
+$(document).on('click', '#tutu_show_preview_btn', function() {
+    showTutuResultMode('preview');
+});
+
+// 结果显示为源码
+$(document).on('click', '#tutu_show_source_btn', function() {
+    showTutuResultMode('source');
+});
+
     function injectTutuButton() {
         if ($('#option_tutu_theater').length > 0) return;
         const $extensionsMenu = $('#extensionsMenu');
@@ -866,26 +1371,80 @@ $(document).on('click', '.tutu-delete-script-btn', function() {
 });
 
 
-    // 生成
-    $('#tutu_generate_btn').on('click', async function() {
-        const userScenario = $('#tutu_prompt').val().trim();
-        if (!userScenario) return toastr.warning("请先输入剧场情境！");
+// 生成小剧场
+$('#tutu_generate_btn').on('click', async function() {
+    const userScenario = $('#tutu_prompt').val().trim();
 
-        $('#tutu_result_box').text("🐰 兔兔正在疯狂码字中...");
-        $('#tutu_generate_btn').addClass('disabled');
+    if (!userScenario) {
+        toastr.warning('请先输入剧场情境！');
+        return;
+    }
 
-        try {
-            const context = SillyTavern.getContext();
-            const charName = (context.characterId !== undefined && context.characters[context.characterId]) ? context.characters[context.characterId].name : "AI";
-            const aiPrompt = `请根据以下情境，写一段关于${charName}的外置小剧场（番外篇）。要求生动有趣，不要包含在正文对话中。\n情境：${userScenario}`;
+    const provider = $('#tutu_api_provider').val() || 'main';
 
-            const response = await generateRaw({ prompt: aiPrompt, quietToLoud: false, isImpersonate: false });
-            $('#tutu_result_box').text(response);
-        } catch (error) {
-            console.error(error);
-            $('#tutu_result_box').text("❌ 生成失败，请检查 API 连接。");
-        } finally {
-            $('#tutu_generate_btn').removeClass('disabled'); 
+    $('#tutu_result_status').text('🐰 兔兔正在疯狂码字中...');
+    $('#tutu_result_preview').html(`
+        <div class="tutu-result-placeholder">
+            🐰 兔兔正在疯狂码字中...
+        </div>
+    `);
+
+    $('#tutu_result_source').text('');
+    $('#tutu_generate_btn').addClass('disabled');
+
+    try {
+        const context = SillyTavern.getContext();
+
+        const charName =
+            context.characterId !== undefined &&
+            context.characters?.[context.characterId]
+                ? context.characters[context.characterId].name
+                : 'AI';
+
+        const aiPrompt = `
+请根据以下情境，写一段关于「${charName}」的外置小剧场。
+
+要求：
+1. 这是独立于正文对话之外的番外内容。
+2. 内容要生动、有画面感、有一定故事性。
+3. 不要解释你的写作过程。
+4. 如果用户要求 HTML，请直接输出完整可渲染的 HTML。
+5. 如果输出 HTML，不要使用 Markdown 代码围栏，不要输出 \`\`\`html。
+6. 如果没有要求 HTML，则输出普通纯文字。
+
+用户提供的情境：
+${userScenario}
+        `.trim();
+
+        let result;
+
+        if (provider === 'secondary') {
+            // 使用自定义副 API
+            result = await generateBySecondaryApi(aiPrompt);
+        } else {
+            // 使用酒馆当前主 API
+            result = await generateRaw({
+                prompt: aiPrompt,
+                quietToLoud: false,
+                isImpersonate: false,
+            });
         }
-    });
+
+        showTutuResult(result);
+    } catch (error) {
+        console.error('小剧场生成失败：', error);
+
+        $('#tutu_result_status').text('❌ 生成失败');
+        $('#tutu_result_preview').html(`
+            <div class="tutu-result-placeholder" style="color:red;">
+                ❌ 生成失败：${escapeHtml(error.message || error)}
+            </div>
+        `);
+
+        toastr.error(error.message || '生成失败，请检查 API 配置');
+    } finally {
+        $('#tutu_generate_btn').removeClass('disabled');
+    }
+});
+
 });
