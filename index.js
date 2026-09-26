@@ -41,10 +41,31 @@ tutuScenarios = [
             .tutu-tab-content { display: none; flex-direction: column; gap: 10px; }
             .tutu-tab-content.active { display: flex; }
             
-            .tutu-preset-card { border: 1px solid var(--SmartThemeBorderColor); border-radius: 5px; padding: 10px; background: rgba(0,0,0,0.2); transition: 0.2s; }
+            .tutu-preset-card {
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 5px;
+    padding: 10px;
+    background: var(--SmartThemeBlurTintColor, transparent);
+    color: var(--SmartThemeBodyColor);
+    transition: 0.2s;
+}
+
             .tutu-preset-card:hover { background: rgba(255,255,255,0.05); }
             .tutu-preset-name { font-weight: bold; color: var(--SmartThemeQuoteColor); font-size: 1.1em; margin-bottom: 5px; }
-            .tutu-preset-text { font-size: 0.85em; opacity: 0.8; white-space: pre-wrap; word-break: break-all; max-height: 80px; overflow-y: auto; margin-bottom: 5px; background: rgba(0,0,0,0.3); padding: 5px; border-radius: 5px; }
+           .tutu-preset-text {
+    font-size: 0.85em;
+    opacity: 0.8;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 80px;
+    overflow-y: auto;
+    margin-bottom: 5px;
+    background: var(--SmartThemeBlurTintColor, transparent);
+    color: var(--SmartThemeBodyColor);
+    padding: 5px;
+    border-radius: 5px;
+}
+
             
             /* 滚动条美化 */
             .tutu-preset-text::-webkit-scrollbar { width: 5px; }
@@ -64,7 +85,8 @@ tutuScenarios = [
     `;
 
     const panelHtml = `
-        <div id="tutu_theater_panel" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 550px; max-height: 90vh; overflow: hidden; background-color: var(--SmartThemeBlurTintColor); backdrop-filter: blur(var(--SmartThemeBlurStrength)); border: 1px solid var(--SmartThemeBorderColor); border-radius: 10px; padding: 20px; z-index: 99999; box-shadow: 0 10px 40px rgba(0,0,0,0.8); color: var(--SmartThemeBodyColor); flex-direction: column;">
+       <div id="tutu_theater_panel">
+
 
             
             <!-- 头部 -->
@@ -86,7 +108,24 @@ tutuScenarios = [
                 <div id="tutu_generate_btn" class="menu_button" style="text-align: center; justify-content: center; padding: 10px;">
                     <i class="fa-solid fa-wand-magic-sparkles"></i> 导演！Action！
                 </div>
-                <div id="tutu_result_box" class="text_muted" style="min-height: 150px; max-height: 250px; overflow-y: auto; background: rgba(0, 0, 0, 0.3); border-radius: 5px; padding: 10px; white-space: pre-wrap; font-size: 0.95em; user-select: text;">这里将显示生成的小剧场内容...</div>
+                <div
+    id="tutu_result_box"
+    class="text_muted"
+    style="
+        min-height:150px;
+        max-height:250px;
+        overflow-y:auto;
+        background:var(--SmartThemeBlurTintColor);
+        color:var(--SmartThemeBodyColor);
+        border:1px solid var(--SmartThemeBorderColor);
+        border-radius:5px;
+        padding:10px;
+        white-space:pre-wrap;
+        font-size:0.95em;
+        user-select:text;
+    "
+>
+这里将显示生成的小剧场内容...</div>
             </div>
 
 <!-- TAB 2: 我的剧本库 -->
@@ -533,7 +572,22 @@ catch (error) {
                         </div>
                     </div>
                     <!-- 隐藏的正文内容 -->
-                    <div class="tutu-preset-text tutu-hidden-content-${index}" style="display:none; margin-top: 5px; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 5px; white-space: pre-wrap; word-break: break-all; max-height: 150px; overflow-y: auto;">${promptText}</div>
+                    <div
+    class="tutu-preset-text tutu-hidden-content-${index}"
+    style="
+        display:none;
+        margin-top:5px;
+        background:var(--SmartThemeBlurTintColor);
+        color:var(--SmartThemeBodyColor);
+        padding:8px;
+        border-radius:5px;
+        white-space:pre-wrap;
+        word-break:break-all;
+        max-height:150px;
+        overflow-y:auto;
+    "
+>${promptText}</div>
+
                 </div>
             `);
             $list.append($card);
