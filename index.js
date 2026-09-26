@@ -1,4 +1,9 @@
-import { generateRaw } from "/script.js";
+import {
+    generateRaw,
+    eventSource,
+    event_types,
+} from "/script.js";
+
 
 import {
     world_names,
@@ -32,13 +37,29 @@ function loadLocalJson(key, defaultValue) {
 }
 
 let tutuScenarios = loadLocalJson(STORAGE_KEY, []);
-
+let tutuIsGenerating = false;
+let tutuLastAutoMessageKey = '';
 let tutuSettings = loadLocalJson(SETTINGS_KEY, {
-    provider: 'main',       // main：酒馆主 API，secondary：副 API
+    provider: 'main',
     endpoint: '',
     apiKey: '',
     model: '',
+
+    autoGenerateEnabled: false,
+    autoGenerateMode: 'current',
+    autoSequenceIndex: 0,
 });
+tutuSettings = {
+    provider: 'main',
+    endpoint: '',
+    apiKey: '',
+    model: '',
+    autoGenerateEnabled: false,
+    autoGenerateMode: 'current',
+    autoSequenceIndex: 0,
+    ...tutuSettings,
+};
+
 
 let tutuApiPresets = loadLocalJson(API_PRESETS_KEY, []);
 let tutuCharacterContexts = loadLocalJson(
@@ -125,116 +146,192 @@ tutuScenarios = [
                 <div id="tutu_close" class="fa-solid fa-xmark interactable hoverglow" title="关闭" style="font-size: 1.5em; cursor: pointer;"></div>
             </div>
             
-            <!-- 标签导航 -->
-<div class="tutu-tab-nav">
-    <div class="tutu-tab-btn active" data-tab="tutu_tab_generate">🎬 生成</div>
-    <div class="tutu-tab-btn" data-tab="tutu_tab_library">📚 我的剧本</div>
-    <div class="tutu-tab-btn" data-tab="tutu_tab_import">📥 批量导入</div>
-    <div class="tutu-tab-btn" data-tab="tutu_tab_settings">⚙️ 设置</div>
+<div class="tutu-icon-toolbar">
+
+    <div
+        class="tutu-icon-tab active"
+        data-tab="tutu_tab_generate"
+        title="生成小剧场">
+        <i class="fa-solid fa-display"></i>
+        <span>预览</span>
+    </div>
+
+    <div
+        class="tutu-icon-tab"
+        data-tab="tutu_tab_library"
+        title="我的剧本">
+        <i class="fa-solid fa-book"></i>
+        <span>剧本</span>
+    </div>
+
+    <div
+        class="tutu-icon-tab"
+        data-tab="tutu_tab_import"
+        title="批量导入">
+        <i class="fa-solid fa-download"></i>
+        <span>导入</span>
+    </div>
+
+    <div
+        class="tutu-icon-tab"
+        data-tab="tutu_tab_settings"
+        title="设置">
+        <i class="fa-solid fa-sliders"></i>
+        <span>设置</span>
+    </div>
+
 </div>
+
 
 
             <!-- TAB 1: 生成区 -->
-            <div id="tutu_tab_generate" class="tutu-tab-content active">
-                <textarea id="tutu_prompt" class="text_pole textarea_compact" rows="5" placeholder="输入情境，或者从剧本库加载..." style="width: 100%; box-sizing: border-box;"></textarea>
-<!-- 当前角色上下文 -->
-<div id="tutu_character_context_box" class="tutu-context-box">
+<div id="tutu_tab_generate" class="tutu-tab-content active">
 
-    <!-- 世界书折叠标题 -->
-    <div
-        id="tutu_worldbook_toggle"
-        class="tutu-context-toggle"
-        role="button"
-        tabindex="0">
+    <!-- 顶部紧凑控制区 -->
+    <div class="tutu-compact-control-panel">
 
-        <div class="tutu-context-title">
-            <i class="fa-solid fa-book"></i>
-            当前角色关联世界书
+        <div class="tutu-prompt-row">
+            <textarea
+                id="tutu_prompt"
+                class="text_pole textarea_compact"
+                rows="2"
+                placeholder="输入情境，或从剧本库载入……"></textarea>
+
+            <div
+                id="tutu_generate_btn"
+                class="tutu-director-icon"
+                title="生成小剧场">
+                <i class="fa-solid fa-wand-magic-sparkles"></i>
+            </div>
         </div>
 
-        <i
-            id="tutu_worldbook_toggle_icon"
-            class="fa-solid fa-chevron-down">
-        </i>
+        <div class="tutu-compact-actions">
+
+            <div
+                id="tutu_context_toggle_btn"
+                class="tutu-mini-action"
+                title="角色与世界书">
+                <i class="fa-solid fa-book-open"></i>
+                <span>读取内容</span>
+            </div>
+
+            <div
+                id="tutu_clear_prompt_btn"
+                class="tutu-mini-action"
+                title="清空情境">
+                <i class="fa-solid fa-eraser"></i>
+                <span>清空</span>
+            </div>
+
+            <div
+                id="tutu_auto_status"
+                class="tutu-auto-status">
+                <i class="fa-solid fa-circle"></i>
+                <span>手动生成</span>
+            </div>
+
+        </div>
+
     </div>
 
-    <!-- 世界书内容，默认隐藏 -->
+    <!-- 角色、世界书、历史记录，默认隐藏 -->
     <div
-        id="tutu_worldbook_content"
-        class="tutu-worldbook-content"
+        id="tutu_character_context_box"
+        class="tutu-context-box tutu-collapsible-context"
         style="display:none;">
 
         <div
-            id="tutu_character_worldbook_name"
-            class="tutu-context-worldbook">
-            正在读取世界书...
+            id="tutu_worldbook_toggle"
+            class="tutu-context-toggle"
+            role="button"
+            tabindex="0">
+
+            <div class="tutu-context-title">
+                <i class="fa-solid fa-book"></i>
+                当前角色关联世界书
+            </div>
+
+            <i
+                id="tutu_worldbook_toggle_icon"
+                class="fa-solid fa-chevron-down">
+            </i>
         </div>
 
         <div
-            id="tutu_character_worldbook_entries"
-            class="tutu-context-worldbook-entries">
-            正在读取世界书条目...
+            id="tutu_worldbook_content"
+            class="tutu-worldbook-content"
+            style="display:none;">
+
+            <div
+                id="tutu_character_worldbook_name"
+                class="tutu-context-worldbook">
+                正在读取世界书……
+            </div>
+
+            <div
+                id="tutu_character_worldbook_entries"
+                class="tutu-context-worldbook-entries">
+                正在读取世界书条目……
+            </div>
         </div>
-    </div>
 
-    <!-- 历史记录设置 -->
-    <label class="tutu-history-option">
-        <input type="checkbox" id="tutu_include_history">
-        <span>读取历史聊天记录</span>
-    </label>
-
-    <div id="tutu_history_limit_box" style="display:none;">
-        <label class="tutu-settings-label">
-            读取最近多少条消息
+        <label class="tutu-history-option">
+            <input type="checkbox" id="tutu_include_history">
+            <span>读取历史聊天记录</span>
         </label>
 
-        <input
-            id="tutu_history_limit"
-            class="text_pole"
-            type="number"
-            min="1"
-            max="100"
-            value="20">
+        <div id="tutu_history_limit_box" style="display:none;">
+            <label class="tutu-settings-label">
+                读取最近多少条消息
+            </label>
+
+            <input
+                id="tutu_history_limit"
+                class="text_pole"
+                type="number"
+                min="1"
+                max="100"
+                value="20">
+        </div>
+
     </div>
 
-</div>
+    <!-- 主要内容：预览与源码 -->
+    <div id="tutu_result_box" class="tutu-result-box">
 
-                <div id="tutu_generate_btn" class="menu_button" style="text-align: center; justify-content: center; padding: 10px;">
-                    <i class="fa-solid fa-wand-magic-sparkles"></i> 导演！Action！
+        <div class="tutu-result-toolbar">
+            <div id="tutu_result_status" class="text_muted">
+                等待导演开始……
+            </div>
+
+            <div class="tutu-result-mode-buttons">
+                <div
+                    id="tutu_show_preview_btn"
+                    class="tutu-result-mode-btn active"
+                    title="预览">
+                    <i class="fa-solid fa-display"></i>
                 </div>
-<div id="tutu_result_box" class="tutu-result-box">
 
-    <div class="tutu-result-toolbar">
-        <div id="tutu_result_status" class="text_muted">
-            这里将显示生成的小剧场内容...
-        </div>
-
-        <div class="tutu-result-mode-buttons">
-            <div
-                id="tutu_show_preview_btn"
-                class="menu_button margin0 tutu-result-mode-btn active">
-                <i class="fa-solid fa-display"></i>
-                预览
-            </div>
-
-            <div
-                id="tutu_show_source_btn"
-                class="menu_button margin0 tutu-result-mode-btn">
-                <i class="fa-solid fa-code"></i>
-                源码
+                <div
+                    id="tutu_show_source_btn"
+                    class="tutu-result-mode-btn"
+                    title="源码">
+                    <i class="fa-solid fa-code"></i>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div id="tutu_result_preview" class="tutu-result-preview">
-        <div class="tutu-result-placeholder">
-            这里将显示生成的小剧场内容...
+        <div id="tutu_result_preview" class="tutu-result-preview">
+            <div class="tutu-result-placeholder">
+                生成的小剧场会显示在这里
+            </div>
         </div>
+
+        <pre id="tutu_result_source" class="tutu-result-source"></pre>
+
     </div>
 
-    <pre id="tutu_result_source" class="tutu-result-source"></pre>
 </div>
-            </div>
 
 <!-- TAB 2: 我的剧本库 -->
 <div id="tutu_tab_library" class="tutu-tab-content">
@@ -427,7 +524,48 @@ tutuScenarios = [
             </div>
 
         </div>
+<div class="tutu-settings-section tutu-auto-generation-section">
 
+    <div class="tutu-settings-title">
+        <i class="fa-solid fa-bolt"></i>
+        自动生成小剧场
+    </div>
+
+    <label class="tutu-switch-row">
+        <input
+            type="checkbox"
+            id="tutu_auto_generate_enabled">
+
+        <span>
+            收到最新 AI 回复后自动生成
+        </span>
+    </label>
+
+    <label class="tutu-settings-label">
+        自动生成方式
+    </label>
+
+    <select id="tutu_auto_generate_mode" class="text_pole">
+        <option value="current">
+            使用当前输入框情境
+        </option>
+        <option value="random">
+            从剧本库随机选择
+        </option>
+        <option value="sequence">
+            按顺序使用剧本库
+        </option>
+    </select>
+
+    <label class="tutu-settings-label">
+        自动生成使用的 API
+    </label>
+
+    <div class="tutu-auto-api-tip">
+        自动生成会使用上方已经保存的 API 设置。
+    </div>
+
+</div>
         <div
             id="tutu_save_settings_btn"
             class="menu_button">
@@ -529,13 +667,21 @@ function updatePresetFileDropdown() {
 
 
 
-    // Tab 切换逻辑
-    $('.tutu-tab-btn').on('click', function() {
-        $('.tutu-tab-btn').removeClass('active');
-        $('.tutu-tab-content').removeClass('active');
-        $(this).addClass('active');
-        $(`#${$(this).data('tab')}`).addClass('active');
-    });
+function switchTutuTab(tabId) {
+    $('.tutu-icon-tab').removeClass('active');
+    $('.tutu-tab-content').removeClass('active');
+
+    $(`.tutu-icon-tab[data-tab="${tabId}"]`)
+        .addClass('active');
+
+    $(`#${tabId}`)
+        .addClass('active');
+}
+
+$(document).on('click', '.tutu-icon-tab', function () {
+    switchTutuTab($(this).data('tab'));
+});
+
 function getTutuCharacterStorageKey(character, context) {
     /*
      * characterId 在大多数情况下可以区分角色。
@@ -963,7 +1109,6 @@ async function refreshTutuCharacterContext() {
 
     // 自动读取当前用户人设，不显示在界面上
     const userPersona = getCurrentUserPersona(context);
-    console.log('当前用户人设：', userPersona);
 
     const worldBookName = getCharacterWorldBookName(character);
 const characterStorage = getCurrentTutuCharacterStorage();
@@ -1193,6 +1338,286 @@ ${historyText}
 
     return prompt;
 }
+function getRandomTutuScenario() {
+    if (
+        !Array.isArray(tutuScenarios) ||
+        tutuScenarios.length === 0
+    ) {
+        return null;
+    }
+
+    const index = Math.floor(
+        Math.random() * tutuScenarios.length
+    );
+
+    return tutuScenarios[index];
+}
+function getSequenceTutuScenario() {
+    if (
+        !Array.isArray(tutuScenarios) ||
+        tutuScenarios.length === 0
+    ) {
+        return null;
+    }
+
+    let index =
+        Number(tutuSettings.autoSequenceIndex) || 0;
+
+    if (index >= tutuScenarios.length) {
+        index = 0;
+    }
+
+    const scenario = tutuScenarios[index];
+
+    tutuSettings.autoSequenceIndex =
+        (index + 1) % tutuScenarios.length;
+
+    localStorage.setItem(
+        SETTINGS_KEY,
+        JSON.stringify(tutuSettings)
+    );
+
+    return scenario;
+}
+function getAutoGenerationScenario() {
+    const mode =
+        tutuSettings.autoGenerateMode || 'current';
+
+    if (mode === 'random') {
+        const scenario = getRandomTutuScenario();
+
+        return scenario?.prompt || '';
+    }
+
+    if (mode === 'sequence') {
+        const scenario = getSequenceTutuScenario();
+
+        return scenario?.prompt || '';
+    }
+
+    return $('#tutu_prompt').val().trim();
+}
+async function runTutuGeneration({
+    scenario = '',
+    isAutomatic = false,
+} = {}) {
+    if (tutuIsGenerating) {
+        return;
+    }
+
+    scenario = String(scenario || '').trim();
+
+    if (!scenario) {
+        if (isAutomatic) {
+            console.warn(
+                '自动生成没有可用的剧本情境'
+            );
+
+            return;
+        }
+
+        toastr.warning('请先输入剧场情境！');
+        return;
+    }
+
+    tutuIsGenerating = true;
+
+    const provider =
+        $('#tutu_api_provider').val() || 'main';
+
+    $('#tutu_result_status').text(
+        isAutomatic
+            ? '🐰 收到最新剧情，兔兔正在生成番外……'
+            : '🐰 兔兔正在疯狂码字中……'
+    );
+
+    $('#tutu_result_preview').html(`
+        <div class="tutu-result-placeholder">
+            🐰 正在生成小剧场……
+        </div>
+    `);
+
+    $('#tutu_result_source').text('');
+
+    $('#tutu_generate_btn')
+        .addClass('disabled')
+        .attr('title', '正在生成……');
+
+    try {
+        await refreshTutuCharacterContext();
+
+        const aiPrompt =
+            buildTutuContextPrompt(scenario);
+
+        let result;
+
+        if (provider === 'secondary') {
+            result =
+                await generateBySecondaryApi(aiPrompt);
+        } else {
+            result = await generateRaw({
+                prompt: aiPrompt,
+                quietToLoud: false,
+                isImpersonate: false,
+            });
+        }
+
+        result = cleanGeneratedContent(result);
+
+        showTutuResult(result);
+
+        if (isAutomatic) {
+            toastr.success(
+                '已根据最新 AI 回复生成小剧场',
+                '兔兔小剧场'
+            );
+        }
+
+    } catch (error) {
+        console.error(
+            '小剧场生成失败：',
+            error
+        );
+
+        $('#tutu_result_status')
+            .text('❌ 生成失败');
+
+        $('#tutu_result_preview').html(`
+            <div class="tutu-result-placeholder" style="color:red;">
+                ❌ 生成失败：
+                ${escapeHtml(error.message || error)}
+            </div>
+        `);
+
+        if (!isAutomatic) {
+            toastr.error(
+                error.message || '生成失败，请检查 API 配置'
+            );
+        }
+
+    } finally {
+        tutuIsGenerating = false;
+
+        $('#tutu_generate_btn')
+            .removeClass('disabled')
+            .attr('title', '生成小剧场');
+    }
+}
+function getTutuLatestMessageKey() {
+    const context =
+        SillyTavern.getContext();
+
+    const chat = Array.isArray(context.chat)
+        ? context.chat
+        : [];
+
+    const lastMessage =
+        chat[chat.length - 1];
+
+    if (!lastMessage) {
+        return '';
+    }
+
+    return [
+        chat.length,
+        lastMessage.mes ||
+            lastMessage.content ||
+            '',
+        lastMessage.name || '',
+    ].join('::');
+}
+function initTutuAutoGenerationListener() {
+    if (
+        typeof eventSource === 'undefined' ||
+        !event_types?.MESSAGE_RECEIVED
+    ) {
+        console.warn(
+            '兔兔小剧场：没有找到 MESSAGE_RECEIVED 事件'
+        );
+
+        return;
+    }
+
+    eventSource.on(
+        event_types.MESSAGE_RECEIVED,
+        async () => {
+            try {
+                const latestSettings =
+                    loadLocalJson(
+                        SETTINGS_KEY,
+                        tutuSettings
+                    );
+
+                tutuSettings = {
+                    ...tutuSettings,
+                    ...latestSettings,
+                };
+
+                if (
+                    !tutuSettings.autoGenerateEnabled
+                ) {
+                    return;
+                }
+
+                const context =
+                    SillyTavern.getContext();
+
+                const chat = Array.isArray(context.chat)
+                    ? context.chat
+                    : [];
+
+                const latestMessage =
+                    chat[chat.length - 1];
+
+                if (!latestMessage) {
+                    return;
+                }
+
+                // 如果最后一条是用户消息，不触发
+                if (latestMessage.is_user) {
+                    return;
+                }
+
+                const messageKey =
+                    getTutuLatestMessageKey();
+
+                // 防止同一条 AI 消息重复触发
+                if (
+                    messageKey &&
+                    messageKey ===
+                        tutuLastAutoMessageKey
+                ) {
+                    return;
+                }
+
+                tutuLastAutoMessageKey =
+                    messageKey;
+
+                const scenario =
+                    getAutoGenerationScenario();
+
+                if (!scenario) {
+                    console.warn(
+                        '兔兔小剧场：没有可用的自动生成情境'
+                    );
+
+                    return;
+                }
+
+                await runTutuGeneration({
+                    scenario,
+                    isAutomatic: true,
+                });
+
+            } catch (error) {
+                console.error(
+                    '兔兔小剧场自动生成失败：',
+                    error
+                );
+            }
+        }
+    );
+}
 
 async function generateBySecondaryApi(prompt) {
     let endpoint = $('#tutu_secondary_endpoint').val().trim();
@@ -1308,17 +1733,37 @@ async function generateBySecondaryApi(prompt) {
 
 function saveTutuSettings() {
     tutuSettings = {
-        provider: $('#tutu_api_provider').val() || 'main',
-        endpoint: $('#tutu_secondary_endpoint').val().trim(),
-        apiKey: $('#tutu_secondary_api_key').val().trim(),
-        model: $('#tutu_secondary_model').val().trim(),
+        provider:
+            $('#tutu_api_provider').val() || 'main',
+
+        endpoint:
+            $('#tutu_secondary_endpoint').val().trim(),
+
+        apiKey:
+            $('#tutu_secondary_api_key').val().trim(),
+
+        model:
+            $('#tutu_secondary_model').val().trim(),
+
+        autoGenerateEnabled:
+            $('#tutu_auto_generate_enabled').is(':checked'),
+
+        autoGenerateMode:
+            $('#tutu_auto_generate_mode').val() || 'current',
+
+        autoSequenceIndex:
+            Number(tutuSettings.autoSequenceIndex) || 0,
     };
 
     localStorage.setItem(
         SETTINGS_KEY,
         JSON.stringify(tutuSettings)
     );
+
+    updateAutoGenerateStatus();
 }
+
+
 
 function renderApiPresetDropdown() {
     const $select = $('#tutu_api_preset_select');
@@ -1345,14 +1790,32 @@ function renderApiPresetDropdown() {
 }
 
 function loadTutuSettingsToUI() {
-    $('#tutu_api_provider').val(tutuSettings.provider || 'main');
-    $('#tutu_secondary_endpoint').val(tutuSettings.endpoint || '');
-    $('#tutu_secondary_api_key').val(tutuSettings.apiKey || '');
-    $('#tutu_secondary_model').val(tutuSettings.model || '');
+    $('#tutu_api_provider')
+        .val(tutuSettings.provider || 'main');
+
+    $('#tutu_secondary_endpoint')
+        .val(tutuSettings.endpoint || '');
+
+    $('#tutu_secondary_api_key')
+        .val(tutuSettings.apiKey || '');
+
+    $('#tutu_secondary_model')
+        .val(tutuSettings.model || '');
+
+    $('#tutu_auto_generate_enabled')
+        .prop(
+            'checked',
+            Boolean(tutuSettings.autoGenerateEnabled)
+        );
+
+    $('#tutu_auto_generate_mode')
+        .val(tutuSettings.autoGenerateMode || 'current');
 
     updateSecondaryApiVisibility();
     renderApiPresetDropdown();
+    updateAutoGenerateStatus();
 }
+
 
 function updateSecondaryApiVisibility() {
     const provider = $('#tutu_api_provider').val();
@@ -1361,6 +1824,33 @@ function updateSecondaryApiVisibility() {
         $('#tutu_secondary_api_settings').show();
     } else {
         $('#tutu_secondary_api_settings').hide();
+    }
+}
+function updateAutoGenerateStatus() {
+    const enabled = Boolean(
+        tutuSettings.autoGenerateEnabled
+    );
+
+    const $status = $('#tutu_auto_status');
+
+    if (!$status.length) {
+        return;
+    }
+
+    if (enabled) {
+        $status
+            .addClass('enabled')
+            .html(`
+                <i class="fa-solid fa-circle"></i>
+                <span>自动生成已开启</span>
+            `);
+    } else {
+        $status
+            .removeClass('enabled')
+            .html(`
+                <i class="fa-solid fa-circle"></i>
+                <span>手动生成</span>
+            `);
     }
 }
 
@@ -1758,6 +2248,31 @@ catch (error) {
     // ==========================================
     // 4. 事件绑定
     // ==========================================
+$(document).on(
+    'click',
+    '#tutu_context_toggle_btn',
+    function () {
+        const $box =
+            $('#tutu_character_context_box');
+
+        if ($box.is(':visible')) {
+            $box.stop(true, true).slideUp(180);
+        } else {
+            $box.stop(true, true).slideDown(180);
+        }
+    }
+);
+
+$(document).on(
+    'click',
+    '#tutu_clear_prompt_btn',
+    function () {
+        $('#tutu_prompt')
+            .val('')
+            .trigger('focus');
+    }
+);
+
     $(document).on(
     'click',
     '#tutu_worldbook_toggle',
@@ -1837,19 +2352,43 @@ $(document).on('change', '#tutu_include_history', function () {
     }
 });
 
-    // 初始化设置界面
+// 初始化设置界面
 loadTutuSettingsToUI();
+
+// 初始化自动生成监听
+initTutuAutoGenerationListener();
 
 // 切换主 API / 副 API
 $(document).on('change', '#tutu_api_provider', function() {
     updateSecondaryApiVisibility();
 });
 
+
 // 保存 API 设置
 $(document).on('click', '#tutu_save_settings_btn', function() {
     saveTutuSettings();
     toastr.success('小剧场 API 设置已保存');
 });
+$(document).on(
+    'change',
+    '#tutu_auto_generate_enabled, #tutu_auto_generate_mode',
+    function () {
+        tutuSettings.autoGenerateEnabled =
+            $('#tutu_auto_generate_enabled')
+                .is(':checked');
+
+        tutuSettings.autoGenerateMode =
+            $('#tutu_auto_generate_mode').val() ||
+            'current';
+
+        localStorage.setItem(
+            SETTINGS_KEY,
+            JSON.stringify(tutuSettings)
+        );
+
+        updateAutoGenerateStatus();
+    }
+);
 
 // 保存副 API 预设
 $(document).on('click', '#tutu_save_api_preset_btn', function() {
@@ -1987,7 +2526,7 @@ tutuScenarios.push({
         
         toastr.success(`成功导入了 ${importedCount} 个剧本！`);
         renderLibrary(); // 刷新我的剧本列表
-        $('.tutu-tab-btn[data-tab="tutu_tab_library"]').trigger('click'); // 自动跳回【我的剧本】Tab
+        switchTutuTab('tutu_tab_library');
     });
 
 // 点击“新建剧本”
@@ -2082,7 +2621,7 @@ $(document).on('click', '.tutu-load-script-btn', function() {
     $('#tutu_prompt').val(item.prompt || '');
 
     // 切换到“生成”标签页
-    $('.tutu-tab-btn[data-tab="tutu_tab_generate"]').trigger('click');
+    switchTutuTab('tutu_tab_generate');
 
     // 提示用户
     toastr.info(`已载入：${item.name}`, '兔兔小剧场');
@@ -2118,26 +2657,21 @@ $(document).on('click', '.tutu-delete-script-btn', function() {
 });
 
 
-// 生成小剧场
-$('#tutu_generate_btn').on('click', async function() {
-    const userScenario = $('#tutu_prompt').val().trim();
+// 手动生成小剧场
+$(document).on(
+    'click',
+    '#tutu_generate_btn',
+    function () {
+        const scenario =
+            $('#tutu_prompt').val().trim();
 
-    if (!userScenario) {
-        toastr.warning('请先输入剧场情境！');
-        return;
+        runTutuGeneration({
+            scenario,
+            isAutomatic: false,
+        });
     }
+);
 
-    const provider = $('#tutu_api_provider').val() || 'main';
-
-    $('#tutu_result_status').text('🐰 兔兔正在疯狂码字中...');
-    $('#tutu_result_preview').html(`
-        <div class="tutu-result-placeholder">
-            🐰 兔兔正在疯狂码字中...
-        </div>
-    `);
-
-    $('#tutu_result_source').text('');
-    $('#tutu_generate_btn').addClass('disabled');
 
     try {
 await refreshTutuCharacterContext();
