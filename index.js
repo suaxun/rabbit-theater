@@ -19,9 +19,13 @@ jQuery(async () => {
     const STORAGE_KEY = 'tutu_theater_scenarios';
     let tutuScenarios = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
     if (tutuScenarios.length === 0) {
-        tutuScenarios = [
-            { name: "🍳 厨房大乱斗", prompt: "角色正在厨房里手忙脚乱地准备晚餐，结果把盐当成了糖..." }
-        ];
+tutuScenarios = [
+    {
+        name: "🍳 厨房大乱斗",
+        desc: "角色在厨房里手忙脚乱地准备晚餐。",
+        prompt: "角色正在厨房里手忙脚乱地准备晚餐，结果把盐当成了糖..."
+    }
+];
         localStorage.setItem(STORAGE_KEY, JSON.stringify(tutuScenarios));
     }
 
@@ -84,16 +88,69 @@ jQuery(async () => {
                 <div id="tutu_result_box" class="text_muted" style="min-height: 150px; max-height: 250px; overflow-y: auto; background: rgba(0, 0, 0, 0.3); border-radius: 5px; padding: 10px; white-space: pre-wrap; font-size: 0.95em; user-select: text;">这里将显示生成的小剧场内容...</div>
             </div>
 
-            <!-- TAB 2: 我的剧本库 -->
-            <div id="tutu_tab_library" class="tutu-tab-content">
-                <div style="display:flex; gap:5px; align-items:center; margin-bottom: 10px;">
-                    <input type="text" id="tutu_new_name" class="text_pole" placeholder="给当前输入框的情境起个名字..." style="flex:1; margin:0;">
-                    <div id="tutu_save_btn" class="menu_button margin0"><i class="fa-solid fa-save"></i> 保存新剧本</div>
-                </div>
-                <div id="tutu_library_list" style="overflow-y:auto; max-height:300px; display:flex; flex-direction:column; gap:8px;">
-                    <!-- JS 渲染的剧本库 -->
-                </div>
+<!-- TAB 2: 我的剧本库 -->
+<div id="tutu_tab_library" class="tutu-tab-content">
+
+    <!-- 新建剧本按钮 -->
+    <div class="tutu-library-toolbar">
+        <div class="tutu-library-title">
+            <i class="fa-solid fa-book"></i>
+            我的剧本
+        </div>
+
+        <div id="tutu_new_script_btn" class="menu_button margin0">
+            <i class="fa-solid fa-plus"></i>
+            新建剧本
+        </div>
+    </div>
+
+    <!-- 新建 / 编辑剧本表单，默认隐藏 -->
+    <div id="tutu_script_editor" class="tutu-script-editor" style="display:none;">
+
+        <div class="tutu-editor-header">
+            <strong id="tutu_editor_title">新建剧本</strong>
+
+            <div id="tutu_cancel_edit_btn"
+                 class="menu_button margin0 tutu-small-btn">
+                取消
             </div>
+        </div>
+
+        <input
+            type="text"
+            id="tutu_script_name"
+            class="text_pole"
+            placeholder="剧本名称，例如：厨房大乱斗"
+        >
+
+        <input
+            type="text"
+            id="tutu_script_desc"
+            class="text_pole"
+            placeholder="简介，可不填写"
+        >
+
+        <textarea
+            id="tutu_script_prompt"
+            class="text_pole"
+            rows="7"
+            placeholder="请输入剧本内容或情境..."
+        ></textarea>
+
+        <div
+            id="tutu_save_btn"
+            class="menu_button tutu-save-script-btn">
+            <i class="fa-solid fa-save"></i>
+            保存剧本
+        </div>
+    </div>
+
+    <!-- 剧本列表 -->
+    <div id="tutu_library_list" class="tutu-library-list">
+        <!-- JS 渲染的剧本库 -->
+    </div>
+</div>
+
 
             <!-- TAB 3: 多选批量导入系统预设 -->
             <div id="tutu_tab_import" class="tutu-tab-content">
@@ -214,46 +271,121 @@ function updatePresetFileDropdown() {
         $(`#${$(this).data('tab')}`).addClass('active');
     });
 
-    // 渲染：我的剧本库
-    function renderLibrary() {
-        const $list = $('#tutu_library_list');
-        $list.empty();
-        
-        tutuScenarios.forEach((item, index) => {
-            const $item = $(`
-                <div class="tutu-preset-card" style="display: flex; gap: 10px; align-items: center;">
-                    <div style="flex:1;">
-                        <div class="tutu-preset-name">${item.name}</div>
-                        <div class="tutu-preset-text">${item.prompt}</div>
+function escapeHtml(value) {
+    return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+let editingScriptIndex = -1;
+
+function openScriptEditor(index = -1) {
+    editingScriptIndex = index;
+
+    $('#tutu_script_editor').show();
+
+    if (index === -1) {
+        $('#tutu_editor_title').text('新建剧本');
+        $('#tutu_script_name').val('');
+        $('#tutu_script_desc').val('');
+        $('#tutu_script_prompt').val('');
+    } else {
+        const item = tutuScenarios[index];
+
+        $('#tutu_editor_title').text('编辑剧本');
+        $('#tutu_script_name').val(item.name || '');
+        $('#tutu_script_desc').val(item.desc || '');
+        $('#tutu_script_prompt').val(item.prompt || '');
+    }
+
+    $('#tutu_script_name').trigger('focus');
+}
+
+function renderLibrary() {
+    const $list = $('#tutu_library_list');
+    $list.empty();
+
+    if (tutuScenarios.length === 0) {
+        $list.html(`
+            <div class="tutu-empty-library">
+                <i class="fa-solid fa-book-open"></i>
+                <div>还没有剧本</div>
+                <small>点击上方“新建剧本”创建一个吧</small>
+            </div>
+        `);
+        return;
+    }
+
+    tutuScenarios.forEach((item, index) => {
+        const name = escapeHtml(item.name || '未命名剧本');
+        const desc = escapeHtml(item.desc || '暂无简介');
+        const prompt = escapeHtml(item.prompt || '');
+
+        const $item = $(`
+            <div class="tutu-preset-card tutu-script-card">
+
+                <div class="tutu-script-main">
+                    <div class="tutu-script-name">
+                        ${name}
                     </div>
-                    <div style="display: flex; flex-direction: column; gap: 5px;">
-                        <div class="menu_button tutu-load-btn margin0" style="justify-content: center; min-width: 80px;" title="载入">
-                            <i class="fa-solid fa-play"></i> 载入
-                        </div>
-                        <div class="menu_button tutu-item-delete margin0" style="justify-content: center; min-width: 80px; background: rgba(255,0,0,0.2);" title="删除">
-                            <i class="fa-solid fa-trash-can"></i> 删除
-                        </div>
+
+                    <div class="tutu-script-desc">
+                        ${desc}
+                    </div>
+
+                    <!-- 内容默认隐藏 -->
+                    <div
+                        class="tutu-script-content"
+                        style="display:none;">
+                        ${prompt}
                     </div>
                 </div>
-            `);
 
-            // 载入剧本并跳回生成页面
-            $item.find('.tutu-load-btn').on('click', function() {
-                $('#tutu_prompt').val(item.prompt);
-                $('.tutu-tab-btn[data-tab="tutu_tab_generate"]').trigger('click');
-                toastr.info(`已载入: ${item.name}`, "兔兔小剧场");
-            });
+<div class="tutu-script-actions">
 
-            // 删除
-            $item.find('.tutu-item-delete').on('click', function() {
-                tutuScenarios.splice(index, 1);
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(tutuScenarios));
-                renderLibrary();
-            });
+    <!-- 载入按钮 -->
+    <div
+        class="menu_button margin0 tutu-load-script-btn"
+        data-index="${index}">
+        <i class="fa-solid fa-play"></i>
+        载入
+    </div>
 
-            $list.append($item);
-        });
-    }
+    <!-- 查看按钮 -->
+    <div
+        class="menu_button margin0 tutu-view-script-btn"
+        data-index="${index}">
+        <i class="fa-solid fa-eye"></i>
+        查看
+    </div>
+
+    <!-- 编辑按钮 -->
+    <div
+        class="menu_button margin0 tutu-edit-script-btn"
+        data-index="${index}">
+        <i class="fa-solid fa-pen"></i>
+        编辑
+    </div>
+
+    <!-- 删除按钮 -->
+    <div
+        class="menu_button margin0 tutu-delete-script-btn"
+        data-index="${index}">
+        <i class="fa-solid fa-trash-can"></i>
+        删除
+    </div>
+
+</div>
+
+            </div>
+        `);
+
+        $list.append($item);
+    });
+}
+
 
     async function fetchAndRenderNativePrompts() {
         const $list = $('#tutu_native_prompts_list');
@@ -492,10 +624,11 @@ catch (error) {
             
             // 确保不导入空数据
             if (p) {
-                tutuScenarios.push({
-                    name: p.name || "导入的预设",
-                    prompt: p.prompt || p.content || p.value || ""
-                });
+tutuScenarios.push({
+    name: p.name || "导入的预设",
+    desc: `从系统预设导入`,
+    prompt: p.prompt || p.content || p.value || ""
+});
                 importedCount++;
             }
         });
@@ -508,23 +641,133 @@ catch (error) {
         $('.tutu-tab-btn[data-tab="tutu_tab_library"]').trigger('click'); // 自动跳回【我的剧本】Tab
     });
 
-    // 保存单个新剧本
-    $('#tutu_save_btn').on('click', function() {
-        const name = $('#tutu_new_name').val().trim();
-        const prompt = $('#tutu_prompt').val().trim();
-        
-        if (!name || !prompt) {
-            toastr.warning("名字和当前生成框里的情境都不能为空！");
-            return;
-        }
+// 点击“新建剧本”
+$(document).on('click', '#tutu_new_script_btn', function() {
+    openScriptEditor(-1);
+});
 
-        tutuScenarios.push({ name, prompt });
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(tutuScenarios));
-        
-        $('#tutu_new_name').val(''); 
-        renderLibrary();
-        toastr.success(`剧本 [${name}] 已保存！`);
-    });
+// 点击“取消编辑”
+$(document).on('click', '#tutu_cancel_edit_btn', function() {
+    editingScriptIndex = -1;
+    $('#tutu_script_editor').slideUp(150);
+});
+
+// 保存新建或编辑的剧本
+$(document).on('click', '#tutu_save_btn', function() {
+    const name = $('#tutu_script_name').val().trim();
+    const desc = $('#tutu_script_desc').val().trim();
+    const prompt = $('#tutu_script_prompt').val().trim();
+
+    if (!name) {
+        toastr.warning('请输入剧本名称！');
+        return;
+    }
+
+    if (!prompt) {
+        toastr.warning('请输入剧本内容！');
+        return;
+    }
+
+    const newScript = {
+        name,
+        desc,
+        prompt
+    };
+
+    if (editingScriptIndex === -1) {
+        // 新建
+        tutuScenarios.push(newScript);
+        toastr.success(`剧本 [${name}] 已创建！`);
+    } else {
+        // 编辑
+        tutuScenarios[editingScriptIndex] = newScript;
+        toastr.success(`剧本 [${name}] 已更新！`);
+    }
+
+    localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(tutuScenarios)
+    );
+
+    renderLibrary();
+
+    editingScriptIndex = -1;
+    $('#tutu_script_editor').slideUp(150);
+});
+// 查看 / 隐藏剧本内容
+$(document).on('click', '.tutu-view-script-btn', function() {
+    const $card = $(this).closest('.tutu-script-card');
+    const $content = $card.find('.tutu-script-content');
+
+    const isVisible = $content.is(':visible');
+
+    if (isVisible) {
+        $content.slideUp(150);
+        $(this).html(`
+            <i class="fa-solid fa-eye"></i>
+            查看
+        `);
+    } else {
+        $content.slideDown(150);
+        $(this).html(`
+            <i class="fa-solid fa-eye-slash"></i>
+            隐藏
+        `);
+    }
+});
+// 载入剧本到生成页面
+$(document).on('click', '.tutu-load-script-btn', function() {
+    // 获取当前按钮上的剧本编号
+    const index = Number($(this).data('index'));
+
+    // 根据编号找到对应的剧本
+    const item = tutuScenarios[index];
+
+    // 如果没有找到剧本，就停止
+    if (!item) {
+        toastr.error('找不到这个剧本');
+        return;
+    }
+
+    // 把剧本正文放进“生成”标签页的输入框
+    $('#tutu_prompt').val(item.prompt || '');
+
+    // 切换到“生成”标签页
+    $('.tutu-tab-btn[data-tab="tutu_tab_generate"]').trigger('click');
+
+    // 提示用户
+    toastr.info(`已载入：${item.name}`, '兔兔小剧场');
+});
+
+// 编辑剧本
+$(document).on('click', '.tutu-edit-script-btn', function() {
+    const index = Number($(this).data('index'));
+    openScriptEditor(index);
+});
+
+// 删除剧本
+$(document).on('click', '.tutu-delete-script-btn', function() {
+    const index = Number($(this).data('index'));
+    const item = tutuScenarios[index];
+
+    if (!item) return;
+
+    const confirmed = confirm(`确定要删除剧本「${item.name}」吗？`);
+
+    if (!confirmed) return;
+
+    tutuScenarios.splice(index, 1);
+
+    localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(tutuScenarios)
+    );
+
+    renderLibrary();
+
+    toastr.success('剧本已删除');
+});
+
 
     // 生成
     $('#tutu_generate_btn').on('click', async function() {
