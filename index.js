@@ -1,10 +1,12 @@
+import { generateRaw } from "/script.js";
+
 import {
-    generateRaw,
     world_names,
     loadWorldInfo,
-} from "/script.js";
+} from "/scripts/world-info.js";
 
 import { getPresetManager } from "/scripts/preset-manager.js";
+
 
 
 
