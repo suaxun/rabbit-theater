@@ -212,24 +212,38 @@ jQuery(async () => {
         let allPrompts = [];
         let data = null;
         
-        try {
-            // 👇 1. 获取管理器
-            const manager = getPresetManager(type);
-            if (!manager) throw new Error("找不到预设管理器");
+try {
+    const manager = getPresetManager(type);
 
-            // 👇 2. 使用 ST 官方提供的 .get() 方法来读取，它是异步的，所以要加 await
-            if (typeof manager.get === 'function') {
-                data = await manager.get(fileName);
-            } else {
-                console.error("Manager Object:", manager);
-                throw new Error("API 版本不匹配，找不到 manager.get() 方法");
-            }
+    if (!manager) {
+        throw new Error("找不到预设管理器");
+    }
 
+    const response = await fetch('/api/presets/get', {
+        method: 'POST',
+        headers: {
+            ...getRequestHeaders(),
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            apiId: type === 'sysprompt'
+    ? 'sysprompt'
+    : 'openai',
+            name: fileName,
+        }),
+    });
 
-            
-            if (!data) {
-                throw new Error("预设内容为空");
-            }
+    if (!response.ok) {
+        throw new Error(`读取预设失败：HTTP ${response.status}`);
+    }
+
+    const result = await response.json();
+    data = result?.preset ?? result;
+
+    if (!data) {
+        throw new Error("预设内容为空");
+    }
+
             
             // 解析数据 (为了兼容性，补充了 fallback 字段名)
             if (type === 'sysprompt') {
