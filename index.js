@@ -648,7 +648,6 @@ catch (error) {
     $(document).on('click', function() { injectTutuButton(); });
 $(document).on('click', '#option_tutu_theater', function() {
     const extensionsMenu = document.getElementById('extensionsMenu');
-
     if (extensionsMenu) {
         extensionsMenu.style.display = 'none';
     }
@@ -658,39 +657,18 @@ $(document).on('click', '#option_tutu_theater', function() {
 
     const $panel = $('#tutu_theater_panel');
 
-    /*
-     * 非常重要：
-     * 清除之前通过 jQuery 写入的移动端内联样式。
-     * 否则移动端的 width/top/left/height 会残留到 PC 端。
-     */
-    $panel
-        .stop(true, true)
-        .removeAttr('style')
-        .removeClass('tutu-mobile-mode');
+    // 先重置状态
+    $panel.stop(true, true).removeClass('tutu-mobile-mode');
 
-    /*
-     * 只添加模式 class，不再直接写 width、height、top、left。
-     */
+    // 移动端加 class
     if (window.matchMedia('(max-width: 600px)').matches) {
         $panel.addClass('tutu-mobile-mode');
     }
 
-    /*
-     * 保持面板使用 flex 布局。
-     * 不使用 fadeIn 后让 display 变成 block。
-     */
-    $panel
-        .css({
-            display: 'flex',
-            opacity: 0
-        })
-        .animate(
-            {
-                opacity: 1
-            },
-            200
-        );
+    // 显示面板
+    $panel.css({ display: 'flex', opacity: 0 }).animate({ opacity: 1 }, 200);
 });
+
 
 
     // 监听类型下拉框改变：切换系统/OAI预设
@@ -708,21 +686,16 @@ $(document).on('click', '#tutu_close', function() {
     $('#tutu_theater_panel')
         .stop(true, true)
         .animate(
-            {
-                opacity: 0
-            },
+            { opacity: 0 },
             200,
             function() {
                 $(this)
-                    .css({
-                        display: 'none',
-                        opacity: ''
-                    })
-                    .removeAttr('style')
+                    .css('display', 'none')
                     .removeClass('tutu-mobile-mode');
             }
         );
 });
+
 
 
 
