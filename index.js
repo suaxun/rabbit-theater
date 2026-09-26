@@ -222,6 +222,7 @@ try {
 
     if (type === 'sysprompt') {
         data = await manager.getPresetSettings(fileName);
+        console.log("读取到的预设数据：", data);
     } else {
         data = await manager.getCompletionPresetByName(fileName);
     }
