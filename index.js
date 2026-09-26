@@ -1,5 +1,7 @@
 
 import { generateRaw, getRequestHeaders } from "/script.js"; 
+import { getPresetManager } from "/scripts/preset-manager.js"; 
+
 // 注：不需要引入 oai_settings 和 power_user 了，因为我们要直接读文件
 jQuery(async () => {
     // ==========================================
@@ -122,29 +124,31 @@ jQuery(async () => {
     // ==========================================
     // 3. 核心逻辑函数
     // ==========================================
-        // 根据选择的类型，读取 ST 原生下拉框里的选项来填充我们的文件下拉框
+    // 根据选择的类型，调用内置函数填充下拉框
     function updatePresetFileDropdown() {
         const type = $('#tutu_preset_type').val();
         const $fileSelect = $('#tutu_preset_file');
         $fileSelect.empty();
         
-        // 抓取 ST 界面上现有的下拉框选项
-        const sourceSelector = type === 'sysprompt' ? '#sysprompt_select' : '#settings_preset_openai';
+        // 👇 1. 获取对应的预设管理器
+        const manager = getPresetManager(type);
+        if (!manager) return;
         
-        $(sourceSelector + ' option').each(function() {
-            const val = $(this).val();
-            const text = $(this).text();
-            if (val) {
-                $fileSelect.append(`<option value="${val}">${text}</option>`);
-            }
+        // 👇 2. 使用官方函数获取预设名称列表
+        const presetNames = manager.getPresetNames();
+        presetNames.forEach(name => {
+            $fileSelect.append(`<option value="${name}">${name}</option>`);
         });
         
-        // 默认选中当前 ST 正在使用的那个预设
-        const currentActive = $(sourceSelector).val();
-        if (currentActive) $fileSelect.val(currentActive);
+        // 👇 3. 获取正在使用的预设并选中
+        const currentActive = manager.getLoadedPresetName();
+        if (currentActive) {
+            $fileSelect.val(currentActive);
+        }
         
         fetchAndRenderNativePrompts();
     }
+
 
     // Tab 切换逻辑
     $('.tutu-tab-btn').on('click', function() {
@@ -209,26 +213,24 @@ jQuery(async () => {
         let data = null;
         
         try {
-            // 【核心修复】：SillyTavern 官方读取预设的真实 API 是 /api/presets/load
-            const res = await fetch('/api/presets/load', {
-                method: 'POST',
-                headers: getRequestHeaders(),
-                body: JSON.stringify({ 
-                    "for": type,      // 'sysprompt' 或 'openai'
-                    "name": fileName  // 文件名
-                })
-            });
+            // 👇 1. 获取管理器
+            const manager = getPresetManager(type);
+            if (!manager) throw new Error("找不到预设管理器");
+
+            // 👇 2. 直接获取预设对象内容！代替原本的 fetch 请求
+            data = manager.getPreset(fileName);
             
-            if (!res.ok) {
-                throw new Error("API 请求失败，状态码: " + res.status);
+            if (!data) {
+                throw new Error("预设内容为空");
             }
             
-            data = await res.json();
-            
-            // 解析数据
+            // 解析数据 (为了兼容性，补充了 fallback 字段名)
             if (type === 'sysprompt') {
-                if (data.content && data.content.trim()) allPrompts.push({ name: "主提示词 (Main Prompt)", prompt: data.content });
-                if (data.post_history && data.post_history.trim()) allPrompts.push({ name: "对话后指令 (Post-History)", prompt: data.post_history });
+                const mainPrompt = data.content || data.system_prompt || "";
+                const postHistory = data.post_history || data.post_history_instructions || "";
+                
+                if (mainPrompt.trim()) allPrompts.push({ name: "主提示词 (Main Prompt)", prompt: mainPrompt });
+                if (postHistory.trim()) allPrompts.push({ name: "对话后指令 (Post-History)", prompt: postHistory });
             } else {
                 // 读取 OpenAI / Chat Completion 预设里的 prompt_manager 数组
                 const pmArray = data.prompts || data.prompt_manager || [];
@@ -242,6 +244,7 @@ jQuery(async () => {
             $list.html('<div style="text-align:center; color:red; padding: 20px;">读取预设失败，请检查控制台。</div>');
             return;
         }
+
 
         if (allPrompts.length === 0) {
             $list.html('<div style="text-align:center; padding: 20px; opacity:0.6;">选中的预设中没有任何内容。</div>');
