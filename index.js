@@ -2662,8 +2662,9 @@ $(document).on(
     'click',
     '#tutu_generate_btn',
     function () {
-        const scenario =
-            $('#tutu_prompt').val().trim();
+        const scenario = String(
+            $('#tutu_prompt').val() || ''
+        ).trim();
 
         runTutuGeneration({
             scenario,
@@ -2672,44 +2673,5 @@ $(document).on(
     }
 );
 
-
-    try {
-await refreshTutuCharacterContext();
-
-const aiPrompt = buildTutuContextPrompt(userScenario);
-
-
-        let result;
-
-        if (provider === 'secondary') {
-            // 使用自定义副 API
-            result = await generateBySecondaryApi(aiPrompt);
-        } else {
-            // 使用酒馆当前主 API
-            result = await generateRaw({
-                prompt: aiPrompt,
-                quietToLoud: false,
-                isImpersonate: false,
-            });
-        }
-
-        result = cleanGeneratedContent(result);
-showTutuResult(result);
-
-    } catch (error) {
-        console.error('小剧场生成失败：', error);
-
-        $('#tutu_result_status').text('❌ 生成失败');
-        $('#tutu_result_preview').html(`
-            <div class="tutu-result-placeholder" style="color:red;">
-                ❌ 生成失败：${escapeHtml(error.message || error)}
-            </div>
-        `);
-
-        toastr.error(error.message || '生成失败，请检查 API 配置');
-    } finally {
-        $('#tutu_generate_btn').removeClass('disabled');
-    }
 });
 
-});
