@@ -83,42 +83,6 @@ tutuScenarios = [
     // ==========================================
     const tutuStyle = `
         <style>
-            .tutu-tab-nav { display: flex; border-bottom: 1px solid var(--SmartThemeBorderColor); margin-bottom: 15px; }
-            .tutu-tab-btn { flex: 1; text-align: center; padding: 8px; cursor: pointer; opacity: 0.6; transition: 0.2s; font-weight: bold; }
-            .tutu-tab-btn:hover { opacity: 1; background: rgba(255,255,255,0.1); }
-            .tutu-tab-btn.active { opacity: 1; border-bottom: 3px solid var(--SmartThemeQuoteColor); }
-            .tutu-tab-content { display: none; flex-direction: column; gap: 10px; }
-            .tutu-tab-content.active { display: flex; }
-            
-            .tutu-preset-card {
-    border: 1px solid var(--SmartThemeBorderColor);
-    border-radius: 5px;
-    padding: 10px;
-    background: var(--SmartThemeBlurTintColor, transparent);
-    color: var(--SmartThemeBodyColor);
-    transition: 0.2s;
-}
-
-            .tutu-preset-card:hover { background: rgba(255,255,255,0.05); }
-            .tutu-preset-name { font-weight: bold; color: var(--SmartThemeQuoteColor); font-size: 1.1em; margin-bottom: 5px; }
-           .tutu-preset-text {
-    font-size: 0.85em;
-    opacity: 0.8;
-    white-space: pre-wrap;
-    word-break: break-all;
-    max-height: 80px;
-    overflow-y: auto;
-    margin-bottom: 5px;
-    background: var(--SmartThemeBlurTintColor, transparent);
-    color: var(--SmartThemeBodyColor);
-    padding: 5px;
-    border-radius: 5px;
-}
-
-            
-            /* 滚动条美化 */
-            .tutu-preset-text::-webkit-scrollbar { width: 5px; }
-            .tutu-preset-text::-webkit-scrollbar-thumb { background: var(--SmartThemeQuoteColor); border-radius: 5px; }
         </style>
     `;
     $('head').append(tutuStyle);
