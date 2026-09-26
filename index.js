@@ -345,39 +345,44 @@ function renderLibrary() {
 
 <div class="tutu-script-actions">
 
-    <!-- 载入按钮 -->
+    <!-- 载入 -->
     <div
-        class="menu_button margin0 tutu-load-script-btn"
-        data-index="${index}">
+        class="menu_button margin0 tutu-icon-btn tutu-load-script-btn"
+        data-index="${index}"
+        title="载入剧本"
+        aria-label="载入剧本">
         <i class="fa-solid fa-play"></i>
-        载入
     </div>
 
-    <!-- 查看按钮 -->
+    <!-- 查看 -->
     <div
-        class="menu_button margin0 tutu-view-script-btn"
-        data-index="${index}">
+        class="menu_button margin0 tutu-icon-btn tutu-view-script-btn"
+        data-index="${index}"
+        title="查看剧本内容"
+        aria-label="查看剧本内容">
         <i class="fa-solid fa-eye"></i>
-        查看
     </div>
 
-    <!-- 编辑按钮 -->
+    <!-- 编辑 -->
     <div
-        class="menu_button margin0 tutu-edit-script-btn"
-        data-index="${index}">
+        class="menu_button margin0 tutu-icon-btn tutu-edit-script-btn"
+        data-index="${index}"
+        title="编辑剧本"
+        aria-label="编辑剧本">
         <i class="fa-solid fa-pen"></i>
-        编辑
     </div>
 
-    <!-- 删除按钮 -->
+    <!-- 删除 -->
     <div
-        class="menu_button margin0 tutu-delete-script-btn"
-        data-index="${index}">
+        class="menu_button margin0 tutu-icon-btn tutu-delete-script-btn"
+        data-index="${index}"
+        title="删除剧本"
+        aria-label="删除剧本">
         <i class="fa-solid fa-trash-can"></i>
-        删除
     </div>
 
 </div>
+
 
             </div>
         `);
