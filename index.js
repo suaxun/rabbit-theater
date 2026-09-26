@@ -693,46 +693,6 @@ $(document).on('click', '#option_tutu_theater', function() {
 });
 
 
-    renderLibrary();
-    updatePresetFileDropdown();
-
-    const $panel = $('#tutu_theater_panel');
-
-    $panel.stop(true, true);
-
-    if (window.matchMedia('(max-width: 600px)').matches) {
-        $panel.css({
-            display: 'flex',
-            position: 'fixed',
-
-            top: '50%',
-            left: '50%',
-            right: 'auto',
-            bottom: 'auto',
-
-            width: 'calc(100vw - 24px)',
-            maxWidth: 'calc(100vw - 24px)',
-
-            height: 'auto',
-            maxHeight: 'calc(100dvh - 24px)',
-
-            transform: 'translate(-50%, -50%)',
-
-            overflowY: 'auto',
-            overflowX: 'hidden',
-
-            boxSizing: 'border-box'
-        });
-    } else {
-        $panel.css({
-            display: 'flex'
-        });
-    }
-
-    $panel.hide().fadeIn(200);
-});
-
-
     // 监听类型下拉框改变：切换系统/OAI预设
     $(document).on('change', '#tutu_preset_type', function() {
         updatePresetFileDropdown();
