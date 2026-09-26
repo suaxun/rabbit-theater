@@ -4,7 +4,7 @@
 
 #tutu_theater_panel {
     display: none;
-    position: fixed;
+    position: absolute; 
 
     top: 50%;
     left: 50%;
@@ -282,6 +282,7 @@
    ========================================== */
 
 .tutu-mobile-mode {
+    position: absolute !important;
     top: 50% !important;
     left: 50% !important;
     right: auto !important;
