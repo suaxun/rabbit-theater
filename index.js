@@ -19,6 +19,7 @@ jQuery(async () => {
 const STORAGE_KEY = 'tutu_theater_scenarios';
 const SETTINGS_KEY = 'tutu_theater_settings';
 const API_PRESETS_KEY = 'tutu_theater_api_presets';
+const CHARACTER_CONTEXT_KEY = 'tutu_theater_character_context';
 
 function loadLocalJson(key, defaultValue) {
     try {
@@ -40,6 +41,10 @@ let tutuSettings = loadLocalJson(SETTINGS_KEY, {
 });
 
 let tutuApiPresets = loadLocalJson(API_PRESETS_KEY, []);
+let tutuCharacterContexts = loadLocalJson(
+    CHARACTER_CONTEXT_KEY,
+    {}
+);
 
     if (tutuScenarios.length === 0) {
 tutuScenarios = [
@@ -132,42 +137,47 @@ tutuScenarios = [
             <!-- TAB 1: 生成区 -->
             <div id="tutu_tab_generate" class="tutu-tab-content active">
                 <textarea id="tutu_prompt" class="text_pole textarea_compact" rows="5" placeholder="输入情境，或者从剧本库加载..." style="width: 100%; box-sizing: border-box;"></textarea>
-                <!-- 当前角色上下文 -->
+<!-- 当前角色上下文 -->
 <div id="tutu_character_context_box" class="tutu-context-box">
 
-    <div class="tutu-context-title">
-        <i class="fa-solid fa-user"></i>
-        当前角色信息
+    <!-- 世界书折叠标题 -->
+    <div
+        id="tutu_worldbook_toggle"
+        class="tutu-context-toggle"
+        role="button"
+        tabindex="0">
+
+        <div class="tutu-context-title">
+            <i class="fa-solid fa-book"></i>
+            当前角色关联世界书
+        </div>
+
+        <i
+            id="tutu_worldbook_toggle_icon"
+            class="fa-solid fa-chevron-down">
+        </i>
     </div>
 
-    <div id="tutu_current_character_name" class="tutu-context-character">
-        当前角色：读取中...
+    <!-- 世界书内容，默认隐藏 -->
+    <div
+        id="tutu_worldbook_content"
+        class="tutu-worldbook-content"
+        style="display:none;">
+
+        <div
+            id="tutu_character_worldbook_name"
+            class="tutu-context-worldbook">
+            正在读取世界书...
+        </div>
+
+        <div
+            id="tutu_character_worldbook_entries"
+            class="tutu-context-worldbook-entries">
+            正在读取世界书条目...
+        </div>
     </div>
 
-    <div class="tutu-context-description-label">
-        角色描述会自动读取
-    </div>
-
-    <div id="tutu_character_description_preview"
-         class="tutu-context-description">
-        正在读取角色描述...
-    </div>
-
-    <div class="tutu-context-title" style="margin-top:10px;">
-        <i class="fa-solid fa-book"></i>
-        当前角色关联世界书
-    </div>
-
-    <div id="tutu_character_worldbook_name"
-         class="tutu-context-worldbook">
-        正在读取世界书...
-    </div>
-
-    <div id="tutu_character_worldbook_entries"
-         class="tutu-context-worldbook-entries">
-        正在读取世界书条目...
-    </div>
-
+    <!-- 历史记录设置 -->
     <label class="tutu-history-option">
         <input type="checkbox" id="tutu_include_history">
         <span>读取历史聊天记录</span>
@@ -184,11 +194,11 @@ tutuScenarios = [
             type="number"
             min="1"
             max="100"
-            value="20"
-        >
+            value="20">
     </div>
 
 </div>
+
                 <div id="tutu_generate_btn" class="menu_button" style="text-align: center; justify-content: center; padding: 10px;">
                     <i class="fa-solid fa-wand-magic-sparkles"></i> 导演！Action！
                 </div>
@@ -526,6 +536,77 @@ function updatePresetFileDropdown() {
         $(this).addClass('active');
         $(`#${$(this).data('tab')}`).addClass('active');
     });
+function getTutuCharacterStorageKey(character, context) {
+    /*
+     * characterId 在大多数情况下可以区分角色。
+     * 同时加入角色头像和名称，避免某些版本中的 ID 冲突。
+     */
+    const characterId =
+        context?.characterId !== undefined
+            ? String(context.characterId)
+            : 'none';
+
+    const avatar =
+        character?.avatar ||
+        character?.data?.avatar ||
+        '';
+
+    const name =
+        character?.name ||
+        character?.data?.name ||
+        'AI';
+
+    return `${characterId}::${avatar}::${name}`;
+}
+
+function getCurrentTutuCharacterStorage() {
+    const context = SillyTavern.getContext();
+
+    const character =
+        context.characterId !== undefined &&
+        context.characters?.[context.characterId]
+            ? context.characters[context.characterId]
+            : null;
+
+    const key = getTutuCharacterStorageKey(character, context);
+
+    if (!tutuCharacterContexts[key]) {
+        tutuCharacterContexts[key] = {
+            selectedWorldEntries: [],
+            includeHistory: false,
+            historyLimit: 20,
+        };
+    }
+
+    return {
+        context,
+        character,
+        key,
+        settings: tutuCharacterContexts[key],
+    };
+}
+
+function saveCurrentTutuCharacterStorage(settings) {
+    const current = getCurrentTutuCharacterStorage();
+
+    tutuCharacterContexts[current.key] = {
+        selectedWorldEntries: Array.isArray(settings.selectedWorldEntries)
+            ? settings.selectedWorldEntries
+            : [],
+
+        includeHistory: Boolean(settings.includeHistory),
+
+        historyLimit:
+            Number(settings.historyLimit) > 0
+                ? Number(settings.historyLimit)
+                : 20,
+    };
+
+    localStorage.setItem(
+        CHARACTER_CONTEXT_KEY,
+        JSON.stringify(tutuCharacterContexts)
+    );
+}
 
 function escapeHtml(value) {
     return String(value || '')
@@ -661,8 +742,13 @@ let tutuCurrentCharacterContext = {
     characterName: 'AI',
     description: '',
     worldBookName: '',
-    worldEntries: []
+    worldEntries: [],
+    storageKey: '',
+    selectedWorldEntries: [],
+    includeHistory: false,
+    historyLimit: 20,
 };
+
 
 function getCurrentTutuCharacter() {
     const context = SillyTavern.getContext();
@@ -754,6 +840,8 @@ function renderTutuWorldBookEntries() {
 
     const worldBookName = tutuCurrentCharacterContext.worldBookName;
     const entries = tutuCurrentCharacterContext.worldEntries;
+    const selectedEntries =
+        tutuCurrentCharacterContext.selectedWorldEntries || [];
 
     if (!worldBookName) {
         $('#tutu_character_worldbook_name').text(
@@ -784,8 +872,12 @@ function renderTutuWorldBookEntries() {
     }
 
     entries.forEach((entry, index) => {
+        const entryKey = String(entry.key ?? index);
+
         const name = escapeHtml(entry.name);
         const content = escapeHtml(entry.content);
+
+        const isChecked = selectedEntries.includes(entryKey);
 
         const $item = $(`
             <label class="tutu-world-entry-item">
@@ -793,7 +885,8 @@ function renderTutuWorldBookEntries() {
                     type="checkbox"
                     class="tutu-character-world-entry-checkbox"
                     data-index="${index}"
-                >
+                    data-entry-key="${escapeHtml(entryKey)}"
+                    ${isChecked ? 'checked' : ''}>
 
                 <div>
                     <div class="tutu-world-entry-name">
@@ -810,6 +903,23 @@ function renderTutuWorldBookEntries() {
         $list.append($item);
     });
 }
+function loadTutuCharacterOptionsToUI() {
+    $('#tutu_include_history').prop(
+        'checked',
+        Boolean(tutuCurrentCharacterContext.includeHistory)
+    );
+
+    $('#tutu_history_limit').val(
+        tutuCurrentCharacterContext.historyLimit || 20
+    );
+
+    if (tutuCurrentCharacterContext.includeHistory) {
+        $('#tutu_history_limit_box').show();
+    } else {
+        $('#tutu_history_limit_box').hide();
+    }
+}
+
 
 async function refreshTutuCharacterContext() {
     const { character } = getCurrentTutuCharacter();
@@ -824,19 +934,29 @@ async function refreshTutuCharacterContext() {
 
     const description = getCharacterDescription(character);
     const worldBookName = getCharacterWorldBookName(character);
+const characterStorage = getCurrentTutuCharacterStorage();
 
-    tutuCurrentCharacterContext = {
-        character,
-        characterName,
-        description,
-        worldBookName,
-        worldEntries: []
-    };
+tutuCurrentCharacterContext = {
+    character,
+    characterName,
+    description,
+    worldBookName,
+    worldEntries: [],
+    storageKey: characterStorage.key,
+    selectedWorldEntries:
+        characterStorage.settings.selectedWorldEntries || [],
+    includeHistory:
+        Boolean(characterStorage.settings.includeHistory),
+    historyLimit:
+        Number(characterStorage.settings.historyLimit) || 20,
+};
+
 
     renderTutuCharacterBasicInfo();
 
     if (!worldBookName) {
         renderTutuWorldBookEntries();
+        loadTutuCharacterOptionsToUI();
         return;
     }
 
@@ -874,14 +994,17 @@ async function refreshTutuCharacterContext() {
                     return null;
                 }
 
-                return {
-                    name: getWorldEntryName(entry, index),
-                    content
-                };
+return {
+    key: String(entry.uid ?? entry.id ?? index),
+    name: getWorldEntryName(entry, index),
+    content
+};
+
             })
             .filter(Boolean);
 
         renderTutuWorldBookEntries();
+
     } catch (error) {
         console.error('读取角色世界书失败：', error);
 
@@ -892,7 +1015,6 @@ async function refreshTutuCharacterContext() {
         `);
     }
 }
-
 function getSelectedTutuWorldEntries() {
     const selectedEntries = [];
 
@@ -908,23 +1030,20 @@ function getSelectedTutuWorldEntries() {
     return selectedEntries;
 }
 
-function getTutuHistoryText() {
-    const $checkbox = $('#tutu_include_history');
 
-    if (!$checkbox.is(':checked')) {
+function getTutuHistoryText() {
+    if (!tutuCurrentCharacterContext.includeHistory) {
         return '';
     }
 
     const context = SillyTavern.getContext();
+
     const chat = Array.isArray(context.chat)
         ? context.chat
         : [];
 
-    let limit = Number($('#tutu_history_limit').val());
-
-    if (!Number.isFinite(limit) || limit <= 0) {
-        limit = 20;
-    }
+    let limit =
+        Number(tutuCurrentCharacterContext.historyLimit) || 20;
 
     limit = Math.min(Math.max(limit, 1), 100);
 
@@ -949,6 +1068,22 @@ function getTutuHistoryText() {
         })
         .filter(text => text.trim())
         .join('\n\n');
+}
+
+function saveTutuWorldEntrySelection() {
+    const selectedKeys = [];
+
+    $('.tutu-character-world-entry-checkbox:checked').each(function () {
+        selectedKeys.push(String($(this).data('entry-key')));
+    });
+
+    tutuCurrentCharacterContext.selectedWorldEntries = selectedKeys;
+
+    saveCurrentTutuCharacterStorage({
+        selectedWorldEntries: selectedKeys,
+        includeHistory: $('#tutu_include_history').is(':checked'),
+        historyLimit: Number($('#tutu_history_limit').val()) || 20,
+    });
 }
 
 function buildTutuContextPrompt(userScenario) {
@@ -1574,6 +1709,76 @@ catch (error) {
     // ==========================================
     // 4. 事件绑定
     // ==========================================
+    $(document).on(
+    'click',
+    '#tutu_worldbook_toggle',
+    function () {
+        const $toggle = $(this);
+        const $content = $('#tutu_worldbook_content');
+
+        const isExpanded = $toggle.hasClass('expanded');
+
+        if (isExpanded) {
+            $content.stop(true, true).slideUp(180);
+            $toggle.removeClass('expanded');
+        } else {
+            $content.stop(true, true).slideDown(180);
+            $toggle.addClass('expanded');
+        }
+    }
+);
+    $(document).on(
+    'change',
+    '.tutu-character-world-entry-checkbox',
+    function () {
+        saveTutuWorldEntrySelection();
+    }
+);
+$(document).on(
+    'change',
+    '#tutu_include_history',
+    function () {
+        const includeHistory = $(this).is(':checked');
+
+        if (includeHistory) {
+            $('#tutu_history_limit_box').show();
+        } else {
+            $('#tutu_history_limit_box').hide();
+        }
+
+        saveCurrentTutuCharacterStorage({
+            selectedWorldEntries:
+                tutuCurrentCharacterContext.selectedWorldEntries || [],
+
+            includeHistory,
+
+            historyLimit:
+                Number($('#tutu_history_limit').val()) || 20,
+        });
+
+        tutuCurrentCharacterContext.includeHistory = includeHistory;
+    }
+);
+$(document).on(
+    'change',
+    '#tutu_history_limit',
+    function () {
+        saveCurrentTutuCharacterStorage({
+            selectedWorldEntries:
+                tutuCurrentCharacterContext.selectedWorldEntries || [],
+
+            includeHistory:
+                $('#tutu_include_history').is(':checked'),
+
+            historyLimit:
+                Number($(this).val()) || 20,
+        });
+
+        tutuCurrentCharacterContext.historyLimit =
+            Number($(this).val()) || 20;
+    }
+);
+
     // 打开或关闭历史聊天记录读取选项
 $(document).on('change', '#tutu_include_history', function () {
     if ($(this).is(':checked')) {
@@ -1641,9 +1846,17 @@ $(document).on('click', '#option_tutu_theater', function() {
         extensionsMenu.style.display = 'none';
     }
 
-    renderLibrary();
-    updatePresetFileDropdown();
-    refreshTutuCharacterContext();
+renderLibrary();
+updatePresetFileDropdown();
+
+$('#tutu_worldbook_content')
+    .hide();
+
+$('#tutu_worldbook_toggle')
+    .removeClass('expanded');
+
+refreshTutuCharacterContext();
+
 
     const $panel = $('#tutu_theater_panel');
     const isMobile = window.matchMedia('(max-width: 600px)').matches;
