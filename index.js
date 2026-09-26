@@ -74,42 +74,35 @@ tutuScenarios = [
     `;
     $('head').append(tutuStyle);
 
-// 移动端关键样式直接由 JS 注入，避免 style.css 被缓存或被酒馆样式覆盖
 const tutuMobileStyle = `
-<style id="tutu-mobile-critical-style">
-    /*
-     * 桌面端基础样式
-     */
+<style id="tutu-mobile-critical-style-v3">
+
     #tutu_theater_panel {
         position: fixed !important;
         z-index: 2147483647 !important;
         box-sizing: border-box !important;
     }
 
-    /*
-     * 移动端样式
-     */
     @media screen and (max-width: 600px) {
         #tutu_theater_panel {
             display: none;
 
             position: fixed !important;
 
-            /*
-             * 不再使用 top: 50% + transform。
-             * 四边各留 8px，能够避免被顶部裁切。
-             * 视觉上仍然是正中间。
-             */
             top: 8px !important;
+            left: 8px !important;
             right: 8px !important;
             bottom: 8px !important;
-            left: 8px !important;
 
             width: auto !important;
             max-width: none !important;
 
-            height: auto !important;
-            max-height: none !important;
+            /*
+             * 关键修复：
+             * 必须使用明确高度，不能使用 height: auto
+             */
+            height: calc(100dvh - 16px) !important;
+            max-height: calc(100dvh - 16px) !important;
             min-height: 0 !important;
 
             margin: 0 !important;
@@ -118,12 +111,12 @@ const tutuMobileStyle = `
             transform: none !important;
             box-sizing: border-box !important;
 
+            display: flex;
+            flex-direction: column;
+
             overflow-x: hidden !important;
             overflow-y: auto !important;
 
-            /*
-             * 不使用主题变量，避免手机端出现白底白字
-             */
             background: #202124 !important;
             background-color: #202124 !important;
             color: #f1f1f1 !important;
@@ -133,18 +126,10 @@ const tutuMobileStyle = `
 
             z-index: 2147483647 !important;
 
-            /*
-             * 暂时关闭毛玻璃，避免移动端产生额外层叠问题
-             */
             backdrop-filter: none !important;
             -webkit-backdrop-filter: none !important;
 
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8) !important;
-        }
-
-        #tutu_theater_panel,
-        #tutu_theater_panel * {
-            color: #f1f1f1;
         }
 
         #tutu_theater_panel input,
@@ -166,6 +151,8 @@ const tutuMobileStyle = `
             background: #303134 !important;
             color: #f1f1f1 !important;
             border-color: #777 !important;
+            max-height: 30vh !important;
+            overflow-y: auto !important;
         }
 
         #tutu_script_editor {
@@ -197,12 +184,7 @@ const tutuMobileStyle = `
 
         #tutu_native_prompts_list,
         #tutu_library_list {
-            max-height: none !important;
-            overflow-y: auto !important;
-        }
-
-        #tutu_result_box {
-            max-height: 30vh !important;
+            max-height: 35vh !important;
             overflow-y: auto !important;
         }
 
@@ -221,10 +203,21 @@ const tutuMobileStyle = `
             justify-content: flex-end;
         }
     }
+
+    @supports not (height: 100dvh) {
+        @media screen and (max-width: 600px) {
+            #tutu_theater_panel {
+                height: calc(100vh - 16px) !important;
+                max-height: calc(100vh - 16px) !important;
+            }
+        }
+    }
+
 </style>
 `;
 
 $('head').append(tutuMobileStyle);
+
 
 
     // ==========================================
@@ -806,10 +799,44 @@ catch (error) {
         renderLibrary();
         updatePresetFileDropdown(); // ⬅️ 改成调用这个初始化下拉框
         
-  $('#tutu_theater_panel')
-    .css('display', 'flex')
-    .hide()
-    .fadeIn(200);
+$(document).on('click', '#option_tutu_theater', function() {
+    const extensionsMenu = document.getElementById('extensionsMenu');
+
+    if (extensionsMenu) {
+        extensionsMenu.style.display = 'none';
+    }
+
+    renderLibrary();
+    updatePresetFileDropdown();
+
+    const $panel = $('#tutu_theater_panel');
+
+    $panel.stop(true, true);
+
+    if (window.matchMedia('(max-width: 600px)').matches) {
+        $panel.css({
+            display: 'flex',
+            position: 'fixed',
+            top: '8px',
+            left: '8px',
+            right: '8px',
+            bottom: '8px',
+            width: 'auto',
+            height: 'calc(100dvh - 16px)',
+            maxHeight: 'calc(100dvh - 16px)',
+            transform: 'none',
+            overflowY: 'auto',
+            overflowX: 'hidden'
+        });
+    } else {
+        $panel.css({
+            display: 'flex'
+        });
+    }
+
+    $panel.hide().fadeIn(200);
+});
+
 
     });
 
