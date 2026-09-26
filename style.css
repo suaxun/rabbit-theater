@@ -199,3 +199,127 @@
         font-size: 12px;
     }
 }
+/* ============================= */
+/* 剧本库滚动区域 */
+/* ============================= */
+
+#tutu_tab_library {
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* 剧本列表单独滚动 */
+#tutu_library_list {
+    max-height: 45vh;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 5px;
+}
+
+/* 美化剧本库滚动条 */
+#tutu_library_list::-webkit-scrollbar {
+    width: 6px;
+}
+
+#tutu_library_list::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 6px;
+}
+
+#tutu_library_list::-webkit-scrollbar-thumb {
+    background: var(--SmartThemeQuoteColor);
+    border-radius: 6px;
+}
+
+#tutu_library_list::-webkit-scrollbar-thumb:hover {
+    background: var(--SmartThemeBodyColor);
+}
+/* 兔兔小剧场面板 */
+#tutu_theater_panel {
+    max-height: 90vh;
+    overflow: hidden;
+}
+
+/* 剧本库 Tab */
+#tutu_tab_library {
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* 剧本列表 */
+#tutu_library_list {
+    width: 100%;
+    max-height: 45vh;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    box-sizing: border-box;
+    padding-right: 6px;
+}
+
+/* 剧本卡片 */
+.tutu-script-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* 剧本正文区域 */
+.tutu-script-main {
+    flex: 1;
+    min-width: 0;
+}
+
+/* 右侧图标按钮 */
+.tutu-script-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 5px;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+/* 剧本库滚动条 */
+#tutu_library_list::-webkit-scrollbar {
+    width: 6px;
+}
+
+#tutu_library_list::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 6px;
+}
+
+#tutu_library_list::-webkit-scrollbar-thumb {
+    background: var(--SmartThemeQuoteColor);
+    border-radius: 6px;
+}
+
+#tutu_library_list::-webkit-scrollbar-thumb:hover {
+    background: var(--SmartThemeBodyColor);
+}
+
+/* 窄屏适配 */
+@media (max-width: 600px) {
+    #tutu_library_list {
+        max-height: 50vh;
+    }
+
+    .tutu-script-card {
+        gap: 8px;
+    }
+
+    .tutu-script-actions {
+        gap: 3px;
+    }
+
+    .tutu-icon-btn {
+        width: 28px;
+        height: 28px;
+        min-width: 28px !important;
+        font-size: 12px;
+    }
+}
