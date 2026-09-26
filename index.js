@@ -1,6 +1,6 @@
+import { generateRaw } from "/script.js";
+import { getPresetManager } from "/scripts/preset-manager.js";
 
-import { generateRaw, getRequestHeaders } from "/script.js"; 
-import { getPreset } from "/scripts/preset-manager.js";
 
 // 注：不需要引入 oai_settings 和 power_user 了，因为我们要直接读文件
 jQuery(async () => {
@@ -213,8 +213,17 @@ jQuery(async () => {
         let data = null;
         
 try {
-    const result = await getPreset(fileName);
-    data = result?.preset ?? result;
+    const manager = getPresetManager(type);
+
+    console.log("当前预设管理器：", manager);
+    console.log(
+        "预设管理器的方法：",
+        Object.keys(manager),
+        Object.getOwnPropertyNames(Object.getPrototypeOf(manager))
+    );
+
+    throw new Error("请查看控制台里的“预设管理器的方法”");
+
 
     if (!data) {
         throw new Error("预设内容为空");
