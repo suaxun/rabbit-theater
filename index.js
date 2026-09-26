@@ -740,7 +740,13 @@ function showTutuResultMode(mode) {
 let tutuCurrentCharacterContext = {
     character: null,
     characterName: 'AI',
+
+    // 当前角色描述
     description: '',
+
+    // 当前用户人设
+    userPersona: '',
+
     worldBookName: '',
     worldEntries: [],
     storageKey: '',
@@ -748,6 +754,8 @@ let tutuCurrentCharacterContext = {
     includeHistory: false,
     historyLimit: 20,
 };
+
+
 
 
 function getCurrentTutuCharacter() {
@@ -763,6 +771,26 @@ function getCurrentTutuCharacter() {
         context,
         character
     };
+}
+function getCurrentUserPersona(context) {
+    if (!context) {
+        return '';
+    }
+
+    /*
+     * 不同版本的 SillyTavern 可能把用户人设放在不同位置，
+     * 这里按照常见字段依次兼容读取。
+     */
+
+    const persona =
+        context.userPersona ||
+        context.userPersonaDescription ||
+        context.personaDescription ||
+        context.powerUserSettings?.persona_description ||
+        context.power_user_settings?.persona_description ||
+        '';
+
+    return String(persona || '').trim();
 }
 
 function getCharacterDescription(character) {
@@ -924,7 +952,6 @@ function loadTutuCharacterOptionsToUI() {
 async function refreshTutuCharacterContext() {
     const { character } = getCurrentTutuCharacter();
 
-
     const context = SillyTavern.getContext();
 
     const characterName =
@@ -933,13 +960,24 @@ async function refreshTutuCharacterContext() {
         'AI';
 
     const description = getCharacterDescription(character);
+
+    // 自动读取当前用户人设，不显示在界面上
+    const userPersona = getCurrentUserPersona(context);
+    console.log('当前用户人设：', userPersona);
+
     const worldBookName = getCharacterWorldBookName(character);
 const characterStorage = getCurrentTutuCharacterStorage();
 
 tutuCurrentCharacterContext = {
     character,
     characterName,
+
+    // 当前角色描述，后台读取，不显示
     description,
+
+    // 当前用户人设，后台读取，不显示
+    userPersona,
+
     worldBookName,
     worldEntries: [],
     storageKey: characterStorage.key,
@@ -950,6 +988,7 @@ tutuCurrentCharacterContext = {
     historyLimit:
         Number(characterStorage.settings.historyLimit) || 20,
 };
+
 
 
     renderTutuCharacterBasicInfo();
@@ -1094,7 +1133,12 @@ function buildTutuContextPrompt(userScenario) {
         tutuCurrentCharacterContext.description ||
         '当前角色没有提供角色描述。';
 
+    const userPersona =
+        tutuCurrentCharacterContext.userPersona ||
+        '当前用户没有提供用户人设。';
+
     const selectedWorldEntries = getSelectedTutuWorldEntries();
+
 
     const worldBookText = selectedWorldEntries.length
         ? selectedWorldEntries
@@ -1115,6 +1159,9 @@ ${characterName}
 【角色描述】
 ${characterDescription}
 
+【用户人设】
+${userPersona}
+
 【用户提供的情境】
 ${userScenario}
 
@@ -1122,14 +1169,16 @@ ${userScenario}
 ${worldBookText}
 
 要求：
+要求：
 1. 这是独立于正文对话之外的番外内容。
-2. 必须尽量符合角色描述中的性格、身份、背景和说话方式。
-3. 如果提供了世界书条目，请将其中相关设定自然地融入内容。
-4. 内容要生动、有画面感、有一定故事性。
-5. 不要解释你的写作过程。
-6. 如果用户要求 HTML，请直接输出完整可渲染的 HTML。
-7. 如果输出 HTML，不要使用 Markdown 代码围栏，不要输出 \`\`\`html。
-8. 如果没有要求 HTML，则输出普通纯文字。
+2. 必须符合角色描述中的性格、身份、背景和说话方式。
+3. 如果提供了用户人设，请让用户角色的身份、性格和行为符合用户人设。
+4. 如果提供了世界书条目，请将其中相关设定自然地融入内容。
+5. 内容要生动、有画面感、有一定故事性。
+6. 不要解释你的写作过程。
+7. 如果用户要求 HTML，请直接输出完整可渲染的 HTML。
+8. 如果输出 HTML，不要使用 Markdown 代码围栏，不要输出 \`\`\`html。
+9. 如果没有要求 HTML，则输出普通纯文字。
 `.trim();
 
     if (historyText) {
