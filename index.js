@@ -656,18 +656,23 @@ $(document).on('click', '#option_tutu_theater', function() {
     updatePresetFileDropdown();
 
     const $panel = $('#tutu_theater_panel');
+    const isMobile = window.matchMedia('(max-width: 600px)').matches;
 
-    // 先重置状态
+    // 先清除旧状态
     $panel.stop(true, true).removeClass('tutu-mobile-mode');
 
-    // 移动端加 class
-    if (window.matchMedia('(max-width: 600px)').matches) {
+    if (isMobile) {
         $panel.addClass('tutu-mobile-mode');
     }
 
-    // 显示面板
-    $panel.css({ display: 'flex', opacity: 0 }).animate({ opacity: 1 }, 200);
+    // 用 cssText 强制重置定位，防止残留内联样式
+    $panel[0].style.cssText =
+        'display:flex; opacity:0;' +
+        'top:50%; left:50%; transform:translate(-50%,-50%);';
+
+    $panel.animate({ opacity: 1 }, 200);
 });
+
 
 
 
@@ -685,16 +690,12 @@ $(document).on('click', '#option_tutu_theater', function() {
 $(document).on('click', '#tutu_close', function() {
     $('#tutu_theater_panel')
         .stop(true, true)
-        .animate(
-            { opacity: 0 },
-            200,
-            function() {
-                $(this)
-                    .css('display', 'none')
-                    .removeClass('tutu-mobile-mode');
-            }
-        );
+        .animate({ opacity: 0 }, 200, function() {
+            $(this)[0].style.cssText = 'display:none;';
+            $(this).removeClass('tutu-mobile-mode');
+        });
 });
+
 
 
 
