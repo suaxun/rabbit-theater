@@ -214,13 +214,17 @@ jQuery(async () => {
         
         try {
             // 👇 1. 获取管理器
-            // 👇 1. 获取管理器
             const manager = getPresetManager(type);
             if (!manager) throw new Error("找不到预设管理器");
 
-            // 👇 2. 直接获取预设对象内容！从 presets 属性对象中读取
-            // 为了兼容不同版本的 SillyTavern，写一个双重保险：
-            data = typeof manager.getPreset === 'function' ? manager.getPreset(fileName) : manager.presets[fileName];
+            // 👇 2. 使用 ST 官方提供的 .get() 方法来读取，它是异步的，所以要加 await
+            if (typeof manager.get === 'function') {
+                data = await manager.get(fileName);
+            } else {
+                console.error("Manager Object:", manager);
+                throw new Error("API 版本不匹配，找不到 manager.get() 方法");
+            }
+
 
             
             if (!data) {
