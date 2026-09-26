@@ -124,30 +124,30 @@ jQuery(async () => {
     // ==========================================
     // 3. 核心逻辑函数
     // ==========================================
-    // 根据选择的类型，调用内置函数填充下拉框
+    // 根据选择的类型，读取 ST 原生下拉框里的选项来填充我们的文件下拉框
     function updatePresetFileDropdown() {
         const type = $('#tutu_preset_type').val();
         const $fileSelect = $('#tutu_preset_file');
         $fileSelect.empty();
         
-        // 👇 1. 获取对应的预设管理器
-        const manager = getPresetManager(type);
-        if (!manager) return;
+        // 恢复直接抓取 ST 界面下拉框的做法，避开 API 版本差异，最稳妥！
+        const sourceSelector = type === 'sysprompt' ? '#sysprompt_select' : '#settings_preset_openai';
         
-        // 👇 2. 使用官方函数获取预设名称列表
-        const presetNames = manager.getPresetNames();
-        presetNames.forEach(name => {
-            $fileSelect.append(`<option value="${name}">${name}</option>`);
+        $(sourceSelector + ' option').each(function() {
+            const val = $(this).val();
+            const text = $(this).text();
+            if (val) {
+                $fileSelect.append(`<option value="${val}">${text}</option>`);
+            }
         });
         
-        // 👇 3. 获取正在使用的预设并选中
-        const currentActive = manager.getLoadedPresetName();
-        if (currentActive) {
-            $fileSelect.val(currentActive);
-        }
+        // 默认选中当前 ST 正在使用的那个预设
+        const currentActive = $(sourceSelector).val();
+        if (currentActive) $fileSelect.val(currentActive);
         
         fetchAndRenderNativePrompts();
     }
+
 
 
     // Tab 切换逻辑
