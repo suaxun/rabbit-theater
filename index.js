@@ -74,6 +74,159 @@ tutuScenarios = [
     `;
     $('head').append(tutuStyle);
 
+// 移动端关键样式直接由 JS 注入，避免 style.css 被缓存或被酒馆样式覆盖
+const tutuMobileStyle = `
+<style id="tutu-mobile-critical-style">
+    /*
+     * 桌面端基础样式
+     */
+    #tutu_theater_panel {
+        position: fixed !important;
+        z-index: 2147483647 !important;
+        box-sizing: border-box !important;
+    }
+
+    /*
+     * 移动端样式
+     */
+    @media screen and (max-width: 600px) {
+        #tutu_theater_panel {
+            display: none;
+
+            position: fixed !important;
+
+            /*
+             * 不再使用 top: 50% + transform。
+             * 四边各留 8px，能够避免被顶部裁切。
+             * 视觉上仍然是正中间。
+             */
+            top: 8px !important;
+            right: 8px !important;
+            bottom: 8px !important;
+            left: 8px !important;
+
+            width: auto !important;
+            max-width: none !important;
+
+            height: auto !important;
+            max-height: none !important;
+            min-height: 0 !important;
+
+            margin: 0 !important;
+            padding: 12px !important;
+
+            transform: none !important;
+            box-sizing: border-box !important;
+
+            overflow-x: hidden !important;
+            overflow-y: auto !important;
+
+            /*
+             * 不使用主题变量，避免手机端出现白底白字
+             */
+            background: #202124 !important;
+            background-color: #202124 !important;
+            color: #f1f1f1 !important;
+
+            border: 1px solid #666 !important;
+            border-radius: 8px !important;
+
+            z-index: 2147483647 !important;
+
+            /*
+             * 暂时关闭毛玻璃，避免移动端产生额外层叠问题
+             */
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8) !important;
+        }
+
+        #tutu_theater_panel,
+        #tutu_theater_panel * {
+            color: #f1f1f1;
+        }
+
+        #tutu_theater_panel input,
+        #tutu_theater_panel textarea,
+        #tutu_theater_panel select {
+            background: #303134 !important;
+            background-color: #303134 !important;
+            color: #f1f1f1 !important;
+            border-color: #777 !important;
+        }
+
+        #tutu_theater_panel input::placeholder,
+        #tutu_theater_panel textarea::placeholder {
+            color: #b8b8b8 !important;
+            opacity: 1 !important;
+        }
+
+        #tutu_result_box {
+            background: #303134 !important;
+            color: #f1f1f1 !important;
+            border-color: #777 !important;
+        }
+
+        #tutu_script_editor {
+            background: #292a2d !important;
+            color: #f1f1f1 !important;
+            border-color: #666 !important;
+        }
+
+        .tutu-preset-card,
+        .tutu-script-card {
+            background: #292a2d !important;
+            color: #f1f1f1 !important;
+            border-color: #666 !important;
+        }
+
+        .tutu-script-content,
+        .tutu-preset-text {
+            background: #303134 !important;
+            color: #f1f1f1 !important;
+        }
+
+        .tutu-tab-btn {
+            color: #f1f1f1 !important;
+        }
+
+        .tutu-tab-btn.active {
+            color: #ffffff !important;
+        }
+
+        #tutu_native_prompts_list,
+        #tutu_library_list {
+            max-height: none !important;
+            overflow-y: auto !important;
+        }
+
+        #tutu_result_box {
+            max-height: 30vh !important;
+            overflow-y: auto !important;
+        }
+
+        .tutu-script-card {
+            flex-wrap: wrap;
+        }
+
+        .tutu-script-main {
+            width: 100%;
+            min-width: 0;
+        }
+
+        .tutu-script-actions {
+            width: 100%;
+            margin-left: 0 !important;
+            justify-content: flex-end;
+        }
+    }
+</style>
+`;
+
+$('head').append(tutuMobileStyle);
+
+
     // ==========================================
     // 2. 构建面板 HTML
     // ==========================================
@@ -226,6 +379,14 @@ tutuScenarios = [
     `;
 
     $('body').append(panelHtml);
+
+// 强制将面板挂到 body 直属层级，避免被 SillyTavern 的容器遮挡
+const tutuPanel = document.getElementById('tutu_theater_panel');
+
+if (tutuPanel && tutuPanel.parentElement !== document.body) {
+    document.body.appendChild(tutuPanel);
+}
+
 
     // ==========================================
     // 3. 核心逻辑函数
@@ -645,7 +806,7 @@ catch (error) {
         renderLibrary();
         updatePresetFileDropdown(); // ⬅️ 改成调用这个初始化下拉框
         
-        $('#tutu_theater_panel')
+  $('#tutu_theater_panel')
     .css('display', 'flex')
     .hide()
     .fadeIn(200);
