@@ -517,9 +517,15 @@ function showTutuResult(content) {
          *
          * 但不建议允许脚本操作父页面。
          */
-        iframe.setAttribute('sandbox', '');
+// 允许生成页面运行 JavaScript。
+// 不添加 allow-same-origin，避免生成内容访问酒馆页面的 Cookie、LocalStorage 等。
+iframe.setAttribute(
+    'sandbox',
+    'allow-scripts allow-forms allow-modals'
+);
 
-        iframe.srcdoc = content;
+iframe.srcdoc = content;
+
 
         $preview.append(iframe);
 
