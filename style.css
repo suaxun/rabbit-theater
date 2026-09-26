@@ -9,11 +9,10 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-
     width: 550px;
     max-width: calc(100vw - 30px);
-    height: auto;
-    max-height: calc(100vh - 60px);
+    height: auto;                       /* 改回 auto */
+    max-height: calc(100vh - 60px);     /* 不超过屏幕 */
 
     box-sizing: border-box;
     padding: 20px;
@@ -103,7 +102,7 @@
    ========================================== */
 
 #tutu_library_list {
-    flex: 1;
+    max-height: 300px;          /* 关键：限死高度，多了就滚 */
     min-height: 0;
     overflow-y: auto;
     display: flex;
@@ -111,6 +110,7 @@
     gap: 8px;
     padding-right: 5px;
 }
+
 
 /* 滚动条美化 */
 #tutu_library_list::-webkit-scrollbar,
