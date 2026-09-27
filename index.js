@@ -54,11 +54,28 @@ tutuSettings = {
     endpoint: '',
     apiKey: '',
     model: '',
+
     autoGenerateEnabled: false,
+
+    // current：使用当前输入框
+    // random：按照范围随机选择剧本
+    // sequence：按照范围顺序选择剧本
     autoGenerateMode: 'current',
+
+    // all：全部剧本
+    // category：指定分类
+    autoGenerateScope: 'all',
+    autoGenerateCategory: '',
+
+    // 保留旧字段，兼容以前的数据
     autoSequenceIndex: 0,
+
+    // 不同分类分别保存顺序位置
+    autoSequenceIndexes: {},
+
     ...tutuSettings,
 };
+
 
 
 let tutuApiPresets = loadLocalJson(API_PRESETS_KEY, []);
@@ -66,6 +83,44 @@ let tutuCharacterContexts = loadLocalJson(
     CHARACTER_CONTEXT_KEY,
     {}
 );
+// 给旧剧本补充分类字段
+let tutuScenarioChanged = false;
+
+tutuScenarios = Array.isArray(tutuScenarios)
+    ? tutuScenarios.map(item => {
+        if (!item || typeof item !== 'object') {
+            tutuScenarioChanged = true;
+
+            return {
+                name: '未命名剧本',
+                desc: '',
+                category: '未分类',
+                prompt: '',
+            };
+        }
+
+        if (!item.category || !String(item.category).trim()) {
+            tutuScenarioChanged = true;
+
+            return {
+                ...item,
+                category: '未分类',
+            };
+        }
+
+        return {
+            ...item,
+            category: String(item.category).trim(),
+        };
+    })
+    : [];
+
+if (tutuScenarioChanged) {
+    localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(tutuScenarios)
+    );
+}
 
     if (tutuScenarios.length === 0) {
 tutuScenarios = [
@@ -186,6 +241,13 @@ tutuScenarios = [
                 <i class="fa-solid fa-eraser"></i>
                 <span>清空</span>
             </div>
+    <div
+        id="tutu_random_script_btn"
+        class="tutu-mini-action"
+        title="随机选择剧本并生成">
+        <i class="fa-solid fa-shuffle"></i>
+        <span>随机剧本</span>
+    </div>
 
             <div
                 id="tutu_auto_status"
@@ -301,17 +363,27 @@ tutuScenarios = [
 <div id="tutu_tab_library" class="tutu-tab-content">
 
     <!-- 新建剧本按钮 -->
-    <div class="tutu-library-toolbar">
-        <div class="tutu-library-title">
-            <i class="fa-solid fa-book"></i>
-            我的剧本
-        </div>
+<div class="tutu-library-toolbar">
+    <div class="tutu-library-title">
+        <i class="fa-solid fa-book"></i>
+        我的剧本
+    </div>
+
+    <div style="display:flex; gap:8px; align-items:center;">
+        <select
+            id="tutu_library_category_filter"
+            class="text_pole"
+            title="按分类筛选剧本">
+            <option value="all">全部分类</option>
+        </select>
 
         <div id="tutu_new_script_btn" class="menu_button margin0">
             <i class="fa-solid fa-plus"></i>
             新建剧本
         </div>
     </div>
+</div>
+
 
     <!-- 新建 / 编辑剧本表单，默认隐藏 -->
     <div id="tutu_script_editor" class="tutu-script-editor" style="display:none;">
@@ -338,6 +410,13 @@ tutuScenarios = [
             class="text_pole"
             placeholder="简介，可不填写"
         >
+<input
+    type="text"
+    id="tutu_script_category"
+    class="text_pole"
+    placeholder="剧本分类，例如：日常、战斗、校园、搞笑"
+    value="未分类"
+>
 
         <textarea
             id="tutu_script_prompt"
@@ -515,21 +594,40 @@ tutuScenarios = [
         </span>
     </label>
 
-    <label class="tutu-settings-label">
-        自动生成方式
-    </label>
+<label class="tutu-settings-label">
+    自动生成方式
+</label>
 
-    <select id="tutu_auto_generate_mode" class="text_pole">
-        <option value="current">
-            使用当前输入框情境
-        </option>
-        <option value="random">
-            从剧本库随机选择
-        </option>
-        <option value="sequence">
-            按顺序使用剧本库
-        </option>
-    </select>
+<select id="tutu_auto_generate_mode" class="text_pole">
+    <option value="current">
+        使用当前输入框情境
+    </option>
+    <option value="random">
+        从剧本库随机生成
+    </option>
+    <option value="sequence">
+        从剧本库顺序生成
+    </option>
+</select>
+
+<label class="tutu-settings-label">
+    自动生成剧本范围
+</label>
+
+<select id="tutu_auto_generate_scope" class="text_pole">
+    <option value="all">
+        使用全部剧本
+    </option>
+    <option value="category">
+        使用指定分类
+    </option>
+</select>
+
+<select
+    id="tutu_auto_generate_category"
+    class="text_pole">
+    <option value="">请选择分类</option>
+</select>
 
     <label class="tutu-settings-label">
         自动生成使用的 API
@@ -1313,38 +1411,49 @@ ${historyText}
     return prompt;
 }
 function getRandomTutuScenario() {
-    if (
-        !Array.isArray(tutuScenarios) ||
-        tutuScenarios.length === 0
-    ) {
+    const scenarios = getTutuScenarioPool();
+
+    if (!scenarios.length) {
         return null;
     }
 
     const index = Math.floor(
-        Math.random() * tutuScenarios.length
+        Math.random() * scenarios.length
     );
 
-    return tutuScenarios[index];
+    return scenarios[index];
 }
+
 function getSequenceTutuScenario() {
-    if (
-        !Array.isArray(tutuScenarios) ||
-        tutuScenarios.length === 0
-    ) {
+    const scenarios = getTutuScenarioPool();
+
+    if (!scenarios.length) {
         return null;
     }
 
-    let index =
-        Number(tutuSettings.autoSequenceIndex) || 0;
+    const sequenceKey =
+        getTutuScenarioSequenceKey();
 
-    if (index >= tutuScenarios.length) {
+    if (
+        !tutuSettings.autoSequenceIndexes ||
+        typeof tutuSettings.autoSequenceIndexes !== 'object'
+    ) {
+        tutuSettings.autoSequenceIndexes = {};
+    }
+
+    let index =
+        Number(
+            tutuSettings.autoSequenceIndexes[sequenceKey]
+        ) || 0;
+
+    if (index >= scenarios.length) {
         index = 0;
     }
 
-    const scenario = tutuScenarios[index];
+    const scenario = scenarios[index];
 
-    tutuSettings.autoSequenceIndex =
-        (index + 1) % tutuScenarios.length;
+    tutuSettings.autoSequenceIndexes[sequenceKey] =
+        (index + 1) % scenarios.length;
 
     localStorage.setItem(
         SETTINGS_KEY,
@@ -1353,6 +1462,7 @@ function getSequenceTutuScenario() {
 
     return scenario;
 }
+
 function getAutoGenerationScenario() {
     const mode =
         tutuSettings.autoGenerateMode || 'current';
@@ -1369,8 +1479,11 @@ function getAutoGenerationScenario() {
         return scenario?.prompt || '';
     }
 
-    return $('#tutu_prompt').val().trim();
+    return String(
+        $('#tutu_prompt').val() || ''
+    ).trim();
 }
+
 async function runTutuGeneration({
     scenario = '',
     isAutomatic = false,
@@ -1567,16 +1680,17 @@ function initTutuAutoGenerationListener() {
                 tutuLastAutoMessageKey =
                     messageKey;
 
-                const scenario =
-                    getAutoGenerationScenario();
+const scenario =
+    getAutoGenerationScenario();
 
-                if (!scenario) {
-                    console.warn(
-                        '兔兔小剧场：没有可用的自动生成情境'
-                    );
+if (!scenario) {
+    console.warn(
+        '兔兔小剧场：当前自动生成范围内没有可用剧本'
+    );
 
-                    return;
-                }
+    return;
+}
+
 
                 await runTutuGeneration({
                     scenario,
@@ -1713,28 +1827,38 @@ async function generateBySecondaryApi(prompt) {
 
 
 function saveTutuSettings() {
-    tutuSettings = {
-        provider:
-            $('#tutu_api_provider').val() || 'main',
+tutuSettings = {
+    provider:
+        $('#tutu_api_provider').val() || 'main',
 
-        endpoint:
-            $('#tutu_secondary_endpoint').val().trim(),
+    endpoint:
+        $('#tutu_secondary_endpoint').val().trim(),
 
-        apiKey:
-            $('#tutu_secondary_api_key').val().trim(),
+    apiKey:
+        $('#tutu_secondary_api_key').val().trim(),
 
-        model:
-            $('#tutu_secondary_model').val().trim(),
+    model:
+        $('#tutu_secondary_model').val().trim(),
 
-        autoGenerateEnabled:
-            $('#tutu_auto_generate_enabled').is(':checked'),
+    autoGenerateEnabled:
+        $('#tutu_auto_generate_enabled').is(':checked'),
 
-        autoGenerateMode:
-            $('#tutu_auto_generate_mode').val() || 'current',
+    autoGenerateMode:
+        $('#tutu_auto_generate_mode').val() || 'current',
 
-        autoSequenceIndex:
-            Number(tutuSettings.autoSequenceIndex) || 0,
-    };
+    autoGenerateScope:
+        $('#tutu_auto_generate_scope').val() || 'all',
+
+    autoGenerateCategory:
+        $('#tutu_auto_generate_category').val() || '',
+
+    autoSequenceIndex:
+        Number(tutuSettings.autoSequenceIndex) || 0,
+
+    autoSequenceIndexes:
+        tutuSettings.autoSequenceIndexes || {},
+};
+
 
     localStorage.setItem(
         SETTINGS_KEY,
@@ -1789,12 +1913,19 @@ function loadTutuSettingsToUI() {
             Boolean(tutuSettings.autoGenerateEnabled)
         );
 
+    $('#tutu_auto_generate_scope')
+    .val(tutuSettings.autoGenerateScope || 'all');
+
+$('#tutu_auto_generate_category')
+    .val(tutuSettings.autoGenerateCategory || '');
+
     $('#tutu_auto_generate_mode')
         .val(tutuSettings.autoGenerateMode || 'current');
 
     updateSecondaryApiVisibility();
     renderApiPresetDropdown();
     updateAutoGenerateStatus();
+    renderTutuCategorySelects();
 }
 
 
@@ -1953,28 +2084,188 @@ function openScriptEditor(index = -1) {
 
     $('#tutu_script_editor').show();
 
-    if (index === -1) {
-        $('#tutu_editor_title').text('新建剧本');
-        $('#tutu_script_name').val('');
-        $('#tutu_script_desc').val('');
-        $('#tutu_script_prompt').val('');
-    } else {
-        const item = tutuScenarios[index];
+if (index === -1) {
+    $('#tutu_editor_title').text('新建剧本');
+    $('#tutu_script_name').val('');
+    $('#tutu_script_desc').val('');
+    $('#tutu_script_category').val('未分类');
+    $('#tutu_script_prompt').val('');
+}} else {
+    const item = tutuScenarios[index];
 
-        $('#tutu_editor_title').text('编辑剧本');
-        $('#tutu_script_name').val(item.name || '');
-        $('#tutu_script_desc').val(item.desc || '');
-        $('#tutu_script_prompt').val(item.prompt || '');
-    }
+    $('#tutu_editor_title').text('编辑剧本');
+    $('#tutu_script_name').val(item.name || '');
+    $('#tutu_script_desc').val(item.desc || '');
+    $('#tutu_script_category').val(
+        item.category || '未分类'
+    );
+    $('#tutu_script_prompt').val(item.prompt || '');
+}
+
 
     $('#tutu_script_name').trigger('focus');
+}
+function getTutuScenarioCategories() {
+    const categories = new Set();
+
+    tutuScenarios.forEach(item => {
+        const category =
+            String(item?.category || '未分类').trim() ||
+            '未分类';
+
+        categories.add(category);
+    });
+
+    return Array.from(categories).sort((a, b) =>
+        a.localeCompare(b, 'zh-CN')
+    );
+}
+
+function renderTutuCategorySelects() {
+    const categories = getTutuScenarioCategories();
+
+    const currentLibraryCategory =
+        $('#tutu_library_category_filter').val() || 'all';
+
+    const currentAutoCategory =
+        tutuSettings.autoGenerateCategory || '';
+
+    const $librarySelect =
+        $('#tutu_library_category_filter');
+
+    const $autoSelect =
+        $('#tutu_auto_generate_category');
+
+    if ($librarySelect.length) {
+        $librarySelect.empty();
+
+        $librarySelect.append(
+            $('<option>', {
+                value: 'all',
+                text: '全部分类',
+            })
+        );
+
+        categories.forEach(category => {
+            $librarySelect.append(
+                $('<option>', {
+                    value: category,
+                    text: category,
+                })
+            );
+        });
+
+        if (
+            currentLibraryCategory === 'all' ||
+            categories.includes(currentLibraryCategory)
+        ) {
+            $librarySelect.val(currentLibraryCategory);
+        } else {
+            $librarySelect.val('all');
+        }
+    }
+
+    if ($autoSelect.length) {
+        $autoSelect.empty();
+
+        $autoSelect.append(
+            $('<option>', {
+                value: '',
+                text: '全部分类',
+            })
+        );
+
+        categories.forEach(category => {
+            $autoSelect.append(
+                $('<option>', {
+                    value: category,
+                    text: category,
+                })
+            );
+        });
+
+        if (categories.includes(currentAutoCategory)) {
+            $autoSelect.val(currentAutoCategory);
+        } else {
+            $autoSelect.val('');
+        }
+    }
+
+    updateAutoCategoryVisibility();
+}
+
+function updateAutoCategoryVisibility() {
+    const scope =
+        $('#tutu_auto_generate_scope').val() ||
+        tutuSettings.autoGenerateScope ||
+        'all';
+
+    if (scope === 'category') {
+        $('#tutu_auto_generate_category').show();
+    } else {
+        $('#tutu_auto_generate_category').hide();
+    }
+}
+
+function getTutuScenarioPool() {
+    if (!Array.isArray(tutuScenarios)) {
+        return [];
+    }
+
+    const scope =
+        tutuSettings.autoGenerateScope || 'all';
+
+    const category =
+        tutuSettings.autoGenerateCategory || '';
+
+    if (scope !== 'category' || !category) {
+        return tutuScenarios;
+    }
+
+    return tutuScenarios.filter(item => {
+        const itemCategory =
+            String(item?.category || '未分类').trim() ||
+            '未分类';
+
+        return itemCategory === category;
+    });
+}
+
+function getTutuScenarioSequenceKey() {
+    const scope =
+        tutuSettings.autoGenerateScope || 'all';
+
+    const category =
+        tutuSettings.autoGenerateCategory || '';
+
+    if (scope === 'category' && category) {
+        return `category:${category}`;
+    }
+
+    return 'all';
 }
 
 function renderLibrary() {
     const $list = $('#tutu_library_list');
     $list.empty();
 
-    if (tutuScenarios.length === 0) {
+    const selectedCategory =
+        $('#tutu_library_category_filter').val() ||
+        'all';
+
+    const visibleScenarios =
+        selectedCategory === 'all'
+            ? tutuScenarios
+            : tutuScenarios.filter(item => {
+                const category =
+                    String(item?.category || '未分类').trim() ||
+                    '未分类';
+
+                return category === selectedCategory;
+            });
+
+
+    if (visibleScenarios.length === 0) {
         $list.html(`
             <div class="tutu-empty-library">
                 <i class="fa-solid fa-book-open"></i>
@@ -1985,18 +2276,34 @@ function renderLibrary() {
         return;
     }
 
-    tutuScenarios.forEach((item, index) => {
-        const name = escapeHtml(item.name || '未命名剧本');
-        const desc = escapeHtml(item.desc || '暂无简介');
-        const prompt = escapeHtml(item.prompt || '');
+    visibleScenarios.forEach(item => {
+    const index = tutuScenarios.indexOf(item);
+const name =
+    escapeHtml(item.name || '未命名剧本');
+
+const desc =
+    escapeHtml(item.desc || '暂无简介');
+
+const category =
+    escapeHtml(item.category || '未分类');
+
+const prompt =
+    escapeHtml(item.prompt || '');
+
 
         const $item = $(`
             <div class="tutu-preset-card tutu-script-card">
 
                 <div class="tutu-script-main">
-                    <div class="tutu-script-name">
-                        ${name}
-                    </div>
+<div class="tutu-script-name">
+    ${name}
+</div>
+
+<div class="tutu-script-category">
+    <i class="fa-solid fa-tag"></i>
+    ${category}
+</div>
+
 
                     <div class="tutu-script-desc">
                         ${desc}
@@ -2250,6 +2557,80 @@ catch (error) {
     // ==========================================
     // 4. 事件绑定
     // ==========================================
+    // 剧本库分类筛选
+$(document).on(
+    'change',
+    '#tutu_library_category_filter',
+    function () {
+        renderLibrary();
+    }
+);
+
+// 自动生成范围切换
+$(document).on(
+    'change',
+    '#tutu_auto_generate_scope',
+    function () {
+        tutuSettings.autoGenerateScope =
+            $(this).val() || 'all';
+
+        if (
+            tutuSettings.autoGenerateScope !== 'category'
+        ) {
+            tutuSettings.autoGenerateCategory = '';
+        }
+
+        localStorage.setItem(
+            SETTINGS_KEY,
+            JSON.stringify(tutuSettings)
+        );
+
+        updateAutoCategoryVisibility();
+    }
+);
+
+// 自动生成分类切换
+$(document).on(
+    'change',
+    '#tutu_auto_generate_category',
+    function () {
+        tutuSettings.autoGenerateCategory =
+            $(this).val() || '';
+
+        localStorage.setItem(
+            SETTINGS_KEY,
+            JSON.stringify(tutuSettings)
+        );
+    }
+);
+
+// 点击随机剧本：按当前自动生成范围随机选择并立即生成
+$(document).on(
+    'click',
+    '#tutu_random_script_btn',
+    function () {
+        const scenario =
+            getRandomTutuScenario();
+
+        if (!scenario) {
+            toastr.warning(
+                '当前范围内没有可用剧本'
+            );
+
+            return;
+        }
+
+        $('#tutu_prompt').val(
+            scenario.prompt || ''
+        );
+
+        runTutuGeneration({
+            scenario: scenario.prompt || '',
+            isAutomatic: false,
+        });
+    }
+);
+
 $(document).on(
     'click',
     '#tutu_context_toggle_btn',
@@ -2354,10 +2735,10 @@ $(document).on('change', '#tutu_include_history', function () {
     }
 });
 
-// 初始化设置界面
 loadTutuSettingsToUI();
+renderTutuCategorySelects();
+renderLibrary();
 
-// 初始化自动生成监听
 initTutuAutoGenerationListener();
 
 // 切换主 API / 副 API
@@ -2391,7 +2772,7 @@ $(document).on('click', '#tutu_save_settings_btn', function() {
 });
 $(document).on(
     'change',
-    '#tutu_auto_generate_enabled, #tutu_auto_generate_mode',
+    '#tutu_auto_generate_enabled, #tutu_auto_generate_mode, #tutu_auto_generate_scope, #tutu_auto_generate_category',
     function () {
         tutuSettings.autoGenerateEnabled =
             $('#tutu_auto_generate_enabled')
@@ -2401,14 +2782,24 @@ $(document).on(
             $('#tutu_auto_generate_mode').val() ||
             'current';
 
+        tutuSettings.autoGenerateScope =
+            $('#tutu_auto_generate_scope').val() ||
+            'all';
+
+        tutuSettings.autoGenerateCategory =
+            $('#tutu_auto_generate_category').val() ||
+            '';
+
         localStorage.setItem(
             SETTINGS_KEY,
             JSON.stringify(tutuSettings)
         );
 
+        updateAutoCategoryVisibility();
         updateAutoGenerateStatus();
     }
 );
+
 
 // 保存副 API 预设
 $(document).on('click', '#tutu_save_api_preset_btn', function() {
@@ -2453,7 +2844,7 @@ $(document).on('click', '#option_tutu_theater', function() {
     if (extensionsMenu) {
         extensionsMenu.style.display = 'none';
     }
-
+renderTutuCategorySelects();
 renderLibrary();
 updatePresetFileDropdown();
 
@@ -2562,9 +2953,19 @@ $(document).on('click', '#tutu_cancel_edit_btn', function() {
 
 // 保存新建或编辑的剧本
 $(document).on('click', '#tutu_save_btn', function() {
-    const name = $('#tutu_script_name').val().trim();
-    const desc = $('#tutu_script_desc').val().trim();
-    const prompt = $('#tutu_script_prompt').val().trim();
+const name =
+    $('#tutu_script_name').val().trim();
+
+const desc =
+    $('#tutu_script_desc').val().trim();
+
+const category =
+    $('#tutu_script_category').val().trim() ||
+    '未分类';
+
+const prompt =
+    $('#tutu_script_prompt').val().trim();
+
 
     if (!name) {
         toastr.warning('请输入剧本名称！');
@@ -2576,11 +2977,13 @@ $(document).on('click', '#tutu_save_btn', function() {
         return;
     }
 
-    const newScript = {
-        name,
-        desc,
-        prompt
-    };
+const newScript = {
+    name,
+    desc,
+    category,
+    prompt
+};
+
 
     if (editingScriptIndex === -1) {
         // 新建
@@ -2598,6 +3001,7 @@ $(document).on('click', '#tutu_save_btn', function() {
     );
 
     renderLibrary();
+    renderTutuCategorySelects();
 
     editingScriptIndex = -1;
     $('#tutu_script_editor').slideUp(150);
