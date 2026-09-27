@@ -2344,9 +2344,6 @@ function renderLibrary() {
 <span class="tutu-category-count">
     ${categoryItems.length} 个剧本 · 点击展开
 </span>
-                        <span class="tutu-category-count">
-                            ${categoryItems.length} 个剧本
-                        </span>
                     </div>
 
                     <i class="fa-solid fa-chevron-down tutu-category-arrow"></i>
@@ -2441,8 +2438,11 @@ function renderLibrary() {
         $list.append($section);
     });
 
+    saveTutuCategories();
+}
 
-    async function fetchAndRenderNativePrompts() {
+async function fetchAndRenderNativePrompts() {
+
         const $list = $('#tutu_native_prompts_list');
         const type = $('#tutu_preset_type').val(); // 'sysprompt' 或 'openai'
         const fileName = $('#tutu_preset_file').val();
