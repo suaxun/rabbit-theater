@@ -46,6 +46,8 @@ function loadLocalJson(key, defaultValue) {
 }
 
 let tutuScenarios = loadLocalJson(STORAGE_KEY, []);
+// 当前展开的分类，null 表示全部折叠
+let tutuExpandedCategory = null;
 let tutuIsGenerating = false;
 let tutuLastAutoMessageKey = '';
 let tutuSettings = loadLocalJson(SETTINGS_KEY, {
@@ -2302,6 +2304,15 @@ function renderLibrary() {
     $list.empty();
 
     const categories = getAllTutuCategories();
+        // 手风琴：只保留一个展开的分类
+    if (tutuExpandedCategory && !categories.includes(tutuExpandedCategory)) {
+        tutuExpandedCategory = null;
+    }
+
+    if (!tutuExpandedCategory && categories.length) {
+        tutuExpandedCategory = categories[0];
+    }
+
 
     if (!categories.length) {
         $list.html(`
@@ -2329,32 +2340,36 @@ function renderLibrary() {
                 return itemCategory === category;
             });
 
-const $section = $(`
-    <div
-        class="tutu-category-section expanded"
-        data-category="${escapeHtml(category)}">
+        const isExpanded = category === tutuExpandedCategory;
+
+        const $section = $(`
+            <div
+                class="tutu-category-section${isExpanded ? ' expanded' : ''}"
+                data-category="${escapeHtml(category)}">
 
                 <div
-                    class="tutu-category-header"
-                    title="点击展开或折叠">
+                    class="tutu-category-header tutu-category-drop-target"
+                    data-category="${escapeHtml(category)}"
+                    title="点击展开或折叠，也可以把剧本拖到这里">
 
                     <div class="tutu-category-title">
                         <i class="fa-solid fa-folder"></i>
                         <span>${escapeHtml(category)}</span>
-<span class="tutu-category-count">
-    ${categoryItems.length} 个剧本 · 点击展开
-</span>
+                        <span class="tutu-category-count">
+                            ${categoryItems.length} 个剧本
+                        </span>
                     </div>
 
                     <i class="fa-solid fa-chevron-down tutu-category-arrow"></i>
                 </div>
 
                 <div
-                    class="tutu-category-dropzone"
+                    class="tutu-category-dropzone tutu-category-drop-target"
                     data-category="${escapeHtml(category)}">
                 </div>
             </div>
         `);
+
 
         const $dropzone = $section.find('.tutu-category-dropzone');
 
@@ -2669,9 +2684,25 @@ $(document).on(
         const $section =
             $(this).closest('.tutu-category-section');
 
-        $section.toggleClass('expanded');
+        const category = String(
+            $section.attr('data-category') || ''
+        ).trim();
+
+        if ($section.hasClass('expanded')) {
+            tutuExpandedCategory = null;
+            $section.removeClass('expanded');
+            return;
+        }
+
+        tutuExpandedCategory = category;
+
+        $('#tutu_library_list .tutu-category-section')
+            .removeClass('expanded');
+
+        $section.addClass('expanded');
     }
 );
+
 let tutuDraggingScenarioIndex = -1;
 function moveTutuScenarioToCategory(index, newCategory) {
     index = Number(index);
@@ -2687,6 +2718,14 @@ function moveTutuScenarioToCategory(index, newCategory) {
     }
 
     const scenario = tutuScenarios[index];
+        const oldCategory =
+        String(scenario.category || '未分类').trim() ||
+        '未分类';
+
+    if (oldCategory === newCategory) {
+        return false;
+    }
+
 
     scenario.category = newCategory;
 
@@ -2701,6 +2740,7 @@ function moveTutuScenarioToCategory(index, newCategory) {
 
     saveTutuCategories();
     renderLibrary();
+    tutuExpandedCategory = newCategory;
     renderTutuCategorySelects();
 
     toastr.success(
@@ -2735,30 +2775,51 @@ $(document).on(
     function () {
         tutuDraggingScenarioIndex = -1;
 
-        $('.tutu-category-dropzone')
-            .removeClass('drag-over');
+        clearTutuDragOverState();
 
         $('.tutu-script-card')
             .removeClass('tutu-dragging');
     }
 );
 
-$(document).on(
-    'dragenter',
-    '.tutu-category-section',
-    function () {
-        const $section = $(this);
 
-        if (!$section.hasClass('expanded')) {
-            $section.addClass('expanded');
+function clearTutuDragOverState() {
+    $('.tutu-category-drop-target')
+        .removeClass('drag-over');
+}
+
+// 必须阻止默认行为，否则 PC 上 drop 永远不会触发
+$(document).on(
+    'dragover',
+    '.tutu-category-drop-target',
+    function (event) {
+        event.preventDefault();
+
+        const dataTransfer =
+            event.originalEvent?.dataTransfer;
+
+        if (dataTransfer) {
+            dataTransfer.dropEffect = 'move';
+        }
+
+        if (!$(this).hasClass('drag-over')) {
+            clearTutuDragOverState();
+            $(this).addClass('drag-over');
         }
     }
 );
 
+$(document).on(
+    'dragenter',
+    '.tutu-category-drop-target',
+    function (event) {
+        event.preventDefault();
+    }
+);
 
 $(document).on(
     'dragleave',
-    '.tutu-category-dropzone',
+    '.tutu-category-drop-target',
     function () {
         $(this).removeClass('drag-over');
     }
@@ -2766,37 +2827,33 @@ $(document).on(
 
 $(document).on(
     'drop',
-    '.tutu-category-dropzone',
+    '.tutu-category-drop-target',
     function (event) {
         event.preventDefault();
+        event.stopPropagation();
 
-        const $dropzone = $(this);
-
-        $dropzone.removeClass('drag-over');
+        clearTutuDragOverState();
 
         let index = tutuDraggingScenarioIndex;
 
-        if (index < 0) {
+        if (!Number.isInteger(index) || index < 0) {
             index = Number(
-                event.originalEvent.dataTransfer.getData(
-                    'text/plain'
-                )
+                event.originalEvent
+                    ?.dataTransfer
+                    ?.getData('text/plain')
             );
         }
 
-        const newCategory =
-            String(
-                $dropzone.attr('data-category') || ''
-            ).trim();
+        const newCategory = String(
+            $(this).attr('data-category') || ''
+        ).trim();
 
-        moveTutuScenarioToCategory(
-            index,
-            newCategory
-        );
+        moveTutuScenarioToCategory(index, newCategory);
 
         tutuDraggingScenarioIndex = -1;
     }
 );
+
 // ==========================================
 // 移动端触摸拖动剧本
 // ==========================================
@@ -2960,7 +3017,10 @@ $(document).on(
         /*
          * 阻止页面跟随手指滚动
          */
-        event.preventDefault();
+                if (event.cancelable) {
+            event.preventDefault();
+        }
+
 
         if (state.$ghost) {
             state.$ghost.css({
@@ -3009,7 +3069,10 @@ $(document).on(
         }
 
         if (state.dragging) {
-            event.preventDefault();
+                        if (event.cancelable) {
+                event.preventDefault();
+            }
+
 
             const $dropzone =
                 getTutuDropzoneFromTouch(touch);
