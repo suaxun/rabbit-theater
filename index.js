@@ -25,6 +25,15 @@ const STORAGE_KEY = 'tutu_theater_scenarios';
 const SETTINGS_KEY = 'tutu_theater_settings';
 const API_PRESETS_KEY = 'tutu_theater_api_presets';
 const CHARACTER_CONTEXT_KEY = 'tutu_theater_character_context';
+const CATEGORIES_KEY = 'tutu_theater_categories';
+let tutuCategories = loadLocalJson(CATEGORIES_KEY, []);
+
+tutuCategories = Array.isArray(tutuCategories)
+    ? tutuCategories
+        .map(category => String(category || '').trim())
+        .filter(Boolean)
+    : [];
+
 
 function loadLocalJson(key, defaultValue) {
     try {
@@ -79,6 +88,7 @@ tutuSettings = {
 
 
 let tutuApiPresets = loadLocalJson(API_PRESETS_KEY, []);
+
 let tutuCharacterContexts = loadLocalJson(
     CHARACTER_CONTEXT_KEY,
     {}
@@ -132,6 +142,25 @@ tutuScenarios = [
 ];
         localStorage.setItem(STORAGE_KEY, JSON.stringify(tutuScenarios));
     }
+const scenarioCategories = tutuScenarios
+    .map(item => String(item.category || '未分类').trim())
+    .filter(Boolean);
+
+tutuCategories = Array.from(
+    new Set([
+        ...tutuCategories,
+        ...scenarioCategories,
+    ])
+);
+
+if (!tutuCategories.length) {
+    tutuCategories = ['未分类'];
+}
+
+localStorage.setItem(
+    CATEGORIES_KEY,
+    JSON.stringify(tutuCategories)
+);
 
     // ==========================================
     // 1. 注入 CSS 样式
@@ -362,27 +391,35 @@ tutuScenarios = [
 <!-- TAB 2: 我的剧本库 -->
 <div id="tutu_tab_library" class="tutu-tab-content">
 
-    <!-- 新建剧本按钮 -->
 <div class="tutu-library-toolbar">
     <div class="tutu-library-title">
         <i class="fa-solid fa-book"></i>
         我的剧本
     </div>
 
-    <div style="display:flex; gap:8px; align-items:center;">
-        <select
-            id="tutu_library_category_filter"
+    <div class="tutu-library-category-tools">
+        <input
+            id="tutu_new_category_input"
             class="text_pole"
-            title="按分类筛选剧本">
-            <option value="all">全部分类</option>
-        </select>
+            type="text"
+            placeholder="新分类名称">
 
-        <div id="tutu_new_script_btn" class="menu_button margin0">
+        <div
+            id="tutu_add_category_btn"
+            class="menu_button margin0">
+            <i class="fa-solid fa-folder-plus"></i>
+            新建分类
+        </div>
+
+        <div
+            id="tutu_new_script_btn"
+            class="menu_button margin0">
             <i class="fa-solid fa-plus"></i>
             新建剧本
         </div>
     </div>
 </div>
+
 
 
     <!-- 新建 / 编辑剧本表单，默认隐藏 -->
@@ -2124,46 +2161,17 @@ function getTutuScenarioCategories() {
 function renderTutuCategorySelects() {
     const categories = getTutuScenarioCategories();
 
-    const currentLibraryCategory =
-        $('#tutu_library_category_filter').val() || 'all';
+
 
     const currentAutoCategory =
         tutuSettings.autoGenerateCategory || '';
 
-    const $librarySelect =
-        $('#tutu_library_category_filter');
+
 
     const $autoSelect =
         $('#tutu_auto_generate_category');
 
-    if ($librarySelect.length) {
-        $librarySelect.empty();
 
-        $librarySelect.append(
-            $('<option>', {
-                value: 'all',
-                text: '全部分类',
-            })
-        );
-
-        categories.forEach(category => {
-            $librarySelect.append(
-                $('<option>', {
-                    value: category,
-                    text: category,
-                })
-            );
-        });
-
-        if (
-            currentLibraryCategory === 'all' ||
-            categories.includes(currentLibraryCategory)
-        ) {
-            $librarySelect.val(currentLibraryCategory);
-        } else {
-            $librarySelect.val('all');
-        }
-    }
 
     if ($autoSelect.length) {
         $autoSelect.empty();
@@ -2245,39 +2253,197 @@ function getTutuScenarioSequenceKey() {
     return 'all';
 }
 
+function getAllTutuCategories() {
+    const categories = new Set();
+
+    tutuCategories.forEach(category => {
+        const value = String(category || '').trim();
+
+        if (value) {
+            categories.add(value);
+        }
+    });
+
+    tutuScenarios.forEach(item => {
+        const category =
+            String(item?.category || '未分类').trim() ||
+            '未分类';
+
+        categories.add(category);
+    });
+
+    return Array.from(categories).sort((a, b) =>
+        a.localeCompare(b, 'zh-CN')
+    );
+}
+
+function saveTutuCategories() {
+    tutuCategories = Array.from(
+        new Set(
+            tutuCategories
+                .map(category => String(category || '').trim())
+                .filter(Boolean)
+        )
+    );
+
+    localStorage.setItem(
+        CATEGORIES_KEY,
+        JSON.stringify(tutuCategories)
+    );
+}
+
 function renderLibrary() {
     const $list = $('#tutu_library_list');
-    $list.empty();
 
-    const selectedCategory =
-        $('#tutu_library_category_filter').val() ||
-        'all';
-
-    const visibleScenarios =
-        selectedCategory === 'all'
-            ? tutuScenarios
-            : tutuScenarios.filter(item => {
-                const category =
-                    String(item?.category || '未分类').trim() ||
-                    '未分类';
-
-                return category === selectedCategory;
-            });
-
-
-    if (visibleScenarios.length === 0) {
-        $list.html(`
-            <div class="tutu-empty-library">
-                <i class="fa-solid fa-book-open"></i>
-                <div>还没有剧本</div>
-                <small>点击上方“新建剧本”创建一个吧</small>
-            </div>
-        `);
+    if (!$list.length) {
         return;
     }
 
-    visibleScenarios.forEach(item => {
-    const index = tutuScenarios.indexOf(item);
+    $list.empty();
+
+    const categories = getAllTutuCategories();
+
+    if (!categories.length) {
+        $list.html(`
+            <div class="tutu-empty-library">
+                <i class="fa-solid fa-book-open"></i>
+                <div>还没有分类</div>
+                <small>请先创建一个分类</small>
+            </div>
+        `);
+
+        return;
+    }
+
+    categories.forEach(category => {
+        const categoryItems = tutuScenarios
+            .map((item, index) => ({
+                item,
+                index,
+            }))
+            .filter(({ item }) => {
+                const itemCategory =
+                    String(item?.category || '未分类').trim() ||
+                    '未分类';
+
+                return itemCategory === category;
+            });
+
+        const $section = $(`
+            <div
+                class="tutu-category-section"
+                data-category="${escapeHtml(category)}">
+
+                <div
+                    class="tutu-category-header"
+                    title="点击展开或折叠">
+
+                    <div class="tutu-category-title">
+                        <i class="fa-solid fa-folder"></i>
+                        <span>${escapeHtml(category)}</span>
+<span class="tutu-category-count">
+    ${categoryItems.length} 个剧本 · 点击展开
+</span>
+                        <span class="tutu-category-count">
+                            ${categoryItems.length} 个剧本
+                        </span>
+                    </div>
+
+                    <i class="fa-solid fa-chevron-down tutu-category-arrow"></i>
+                </div>
+
+                <div
+                    class="tutu-category-dropzone"
+                    data-category="${escapeHtml(category)}">
+                </div>
+            </div>
+        `);
+
+        const $dropzone = $section.find('.tutu-category-dropzone');
+
+        if (categoryItems.length === 0) {
+            $dropzone.html(`
+                <div class="tutu-category-empty">
+                    把剧本拖到这里
+                </div>
+            `);
+        } else {
+            categoryItems.forEach(({ item, index }) => {
+                const name =
+                    escapeHtml(item.name || '未命名剧本');
+
+                const desc =
+                    escapeHtml(item.desc || '暂无简介');
+
+                const prompt =
+                    escapeHtml(item.prompt || '');
+
+                const $item = $(`
+                    <div
+                        class="tutu-preset-card tutu-script-card"
+                        draggable="true"
+                        data-index="${index}">
+
+                        <div class="tutu-script-main">
+                            <div class="tutu-script-name">
+                                ${name}
+                            </div>
+
+                            <div class="tutu-script-desc">
+                                ${desc}
+                            </div>
+
+                            <div
+                                class="tutu-script-content"
+                                style="display:none;">
+                                ${prompt}
+                            </div>
+                        </div>
+
+                        <div class="tutu-script-actions">
+
+                            <div
+                                class="menu_button margin0 tutu-icon-btn tutu-load-script-btn"
+                                data-index="${index}"
+                                title="载入剧本">
+                                <i class="fa-solid fa-play"></i>
+                            </div>
+
+                            <div
+                                class="menu_button margin0 tutu-icon-btn tutu-view-script-btn"
+                                data-index="${index}"
+                                title="查看剧本内容">
+                                <i class="fa-solid fa-eye"></i>
+                            </div>
+
+                            <div
+                                class="menu_button margin0 tutu-icon-btn tutu-edit-script-btn"
+                                data-index="${index}"
+                                title="编辑剧本">
+                                <i class="fa-solid fa-pen"></i>
+                            </div>
+
+                            <div
+                                class="menu_button margin0 tutu-icon-btn tutu-delete-script-btn"
+                                data-index="${index}"
+                                title="删除剧本">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </div>
+
+                        </div>
+                    </div>
+                `);
+
+                $dropzone.append($item);
+            });
+        }
+
+        $list.append($section);
+    });
+
+    saveTutuCategories();
+}
+
 const name =
     escapeHtml(item.name || '未命名剧本');
 
@@ -2557,12 +2723,156 @@ catch (error) {
     // ==========================================
     // 4. 事件绑定
     // ==========================================
-    // 剧本库分类筛选
 $(document).on(
-    'change',
-    '#tutu_library_category_filter',
+    'click',
+    '#tutu_add_category_btn',
     function () {
+        const $input = $('#tutu_new_category_input');
+
+        const category =
+            String($input.val() || '').trim();
+
+        if (!category) {
+            toastr.warning('请输入分类名称');
+            return;
+        }
+
+        if (tutuCategories.includes(category)) {
+            toastr.warning('这个分类已经存在');
+            return;
+        }
+
+        tutuCategories.push(category);
+        saveTutuCategories();
+
+        $input.val('');
+
         renderLibrary();
+
+        toastr.success(`分类「${category}」已创建`);
+    }
+);
+$(document).on(
+    'click',
+    '.tutu-category-header',
+    function () {
+        const $section =
+            $(this).closest('.tutu-category-section');
+
+        $section.toggleClass('expanded');
+    }
+);
+let tutuDraggingScenarioIndex = -1;
+
+$(document).on(
+    'dragstart',
+    '.tutu-script-card',
+    function (event) {
+        tutuDraggingScenarioIndex =
+            Number($(this).data('index'));
+
+        event.originalEvent.dataTransfer.effectAllowed =
+            'move';
+
+        event.originalEvent.dataTransfer.setData(
+            'text/plain',
+            String(tutuDraggingScenarioIndex)
+        );
+
+        $(this).addClass('tutu-dragging');
+    }
+);
+
+$(document).on(
+    'dragend',
+    '.tutu-script-card',
+    function () {
+        tutuDraggingScenarioIndex = -1;
+
+        $('.tutu-category-dropzone')
+            .removeClass('drag-over');
+
+        $('.tutu-script-card')
+            .removeClass('tutu-dragging');
+    }
+);
+
+$(document).on(
+    'dragover',
+    '.tutu-category-dropzone',
+    function (event) {
+        event.preventDefault();
+
+        event.originalEvent.dataTransfer.dropEffect =
+            'move';
+
+        $(this).addClass('drag-over');
+    }
+);
+
+$(document).on(
+    'dragleave',
+    '.tutu-category-dropzone',
+    function () {
+        $(this).removeClass('drag-over');
+    }
+);
+
+$(document).on(
+    'drop',
+    '.tutu-category-dropzone',
+    function (event) {
+        event.preventDefault();
+
+        const $dropzone = $(this);
+
+        $dropzone.removeClass('drag-over');
+
+        let index = tutuDraggingScenarioIndex;
+
+        if (index < 0) {
+            index = Number(
+                event.originalEvent.dataTransfer.getData(
+                    'text/plain'
+                )
+            );
+        }
+
+        if (
+            !Number.isInteger(index) ||
+            !tutuScenarios[index]
+        ) {
+            return;
+        }
+
+        const newCategory =
+            String(
+                $dropzone.attr('data-category') || ''
+            ).trim();
+
+        if (!newCategory) {
+            return;
+        }
+
+        tutuScenarios[index].category =
+            newCategory;
+
+        if (!tutuCategories.includes(newCategory)) {
+            tutuCategories.push(newCategory);
+        }
+
+        localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify(tutuScenarios)
+        );
+
+        saveTutuCategories();
+        renderLibrary();
+        renderTutuCategorySelects();
+
+        toastr.success(
+            `已将「${tutuScenarios[index].name}」移动到「${newCategory}」`
+        );
     }
 );
 
@@ -2923,18 +3233,26 @@ $(document).on('click', '#tutu_close', function() {
             
             // 确保不导入空数据
             if (p) {
+const importedCategory = '未分类';
+
 tutuScenarios.push({
     name: p.name || "导入的预设",
     desc: `从系统预设导入`,
+    category: importedCategory,
     prompt: p.prompt || p.content || p.value || ""
 });
+
+if (!tutuCategories.includes(importedCategory)) {
+    tutuCategories.push(importedCategory);
+}
+
                 importedCount++;
             }
         });
 
         // 存入 LocalStorage
         localStorage.setItem(STORAGE_KEY, JSON.stringify(tutuScenarios));
-        
+        saveTutuCategories();
         toastr.success(`成功导入了 ${importedCount} 个剧本！`);
         renderLibrary(); // 刷新我的剧本列表
         switchTutuTab('tutu_tab_library');
@@ -2985,15 +3303,20 @@ const newScript = {
 };
 
 
-    if (editingScriptIndex === -1) {
-        // 新建
-        tutuScenarios.push(newScript);
-        toastr.success(`剧本 [${name}] 已创建！`);
-    } else {
-        // 编辑
-        tutuScenarios[editingScriptIndex] = newScript;
-        toastr.success(`剧本 [${name}] 已更新！`);
-    }
+if (editingScriptIndex === -1) {
+    tutuScenarios.push(newScript);
+    toastr.success(`剧本 [${name}] 已创建！`);
+} else {
+    tutuScenarios[editingScriptIndex] = newScript;
+    toastr.success(`剧本 [${name}] 已更新！`);
+}
+
+if (!tutuCategories.includes(category)) {
+    tutuCategories.push(category);
+}
+
+saveTutuCategories();
+
 
     localStorage.setItem(
         STORAGE_KEY,
