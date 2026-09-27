@@ -437,16 +437,26 @@ tutuScenarios = [
                 placeholder="sk-..."
             >
 
-            <label class="tutu-settings-label">
-                模型名称
-            </label>
+<label class="tutu-settings-label">
+    模型
+</label>
 
-            <input
-                id="tutu_secondary_model"
-                class="text_pole"
-                type="text"
-                placeholder="例如：gpt-4o-mini"
-            >
+<div class="tutu-model-select-row">
+    <select
+        id="tutu_secondary_model"
+        class="text_pole">
+        <option value="">请先拉取模型</option>
+    </select>
+
+    <div
+        id="tutu_fetch_models_btn"
+        class="menu_button margin0"
+        title="从副 API 拉取模型">
+        <i class="fa-solid fa-rotate"></i>
+        拉取模型
+    </div>
+</div>
+
 
             <div class="tutu-api-help">
                 副 API 需要兼容 OpenAI Chat Completions 格式。
@@ -1582,38 +1592,55 @@ function initTutuAutoGenerationListener() {
         }
     );
 }
-
-async function generateBySecondaryApi(prompt) {
-    let endpoint = $('#tutu_secondary_endpoint').val().trim();
+function normalizeSecondaryApiBase(endpoint) {
+    endpoint = String(endpoint || '')
+        .trim()
+        .replace(/\/+$/, '');
 
     if (!endpoint) {
         throw new Error('没有填写副 API 地址');
     }
 
     /*
-     * 兼容以下几种填写方式：
-     *
+     * 兼容：
      * https://api.example.com
      * https://api.example.com/v1
      * https://api.example.com/v1/chat/completions
+     * https://api.example.com/v1/models
      */
     endpoint = endpoint
         .replace(/\/chat\/completions\/?$/i, '')
+        .replace(/\/models\/?$/i, '')
         .replace(/\/+$/, '');
 
     if (!/\/v1$/i.test(endpoint)) {
         endpoint += '/v1';
     }
 
-    endpoint += '/chat/completions';
+    return endpoint;
+}
 
-    const apiKey = $('#tutu_secondary_api_key').val().trim();
-    const model = $('#tutu_secondary_model').val().trim();
+async function generateBySecondaryApi(prompt) {
+    const endpointInput =
+        $('#tutu_secondary_endpoint').val().trim();
+
+    const baseUrl =
+        normalizeSecondaryApiBase(endpointInput);
+
+    const endpoint =
+        `${baseUrl}/chat/completions`;
+
+    const apiKey =
+        $('#tutu_secondary_api_key').val().trim();
+
+    const model =
+        $('#tutu_secondary_model').val().trim();
 
     if (!model) {
-        throw new Error('没有填写副 API 模型名称');
+        throw new Error(
+            '请先拉取模型并选择一个模型'
+        );
     }
-
 
     const headers = {
         'Content-Type': 'application/json',
@@ -1651,22 +1678,8 @@ async function generateBySecondaryApi(prompt) {
     try {
         data = JSON.parse(responseText);
     } catch {
-        // 如果接口直接返回纯文本，也支持
         return responseText;
     }
-
-    /*
-     * OpenAI Chat Completions 常见格式：
-     * {
-     *   choices: [
-     *     {
-     *       message: {
-     *         content: "..."
-     *       }
-     *     }
-     *   ]
-     * }
-     */
 
     const result =
         data?.choices?.[0]?.message?.content ??
@@ -1686,7 +1699,10 @@ async function generateBySecondaryApi(prompt) {
     if (Array.isArray(result)) {
         return result
             .map(item => {
-                if (typeof item === 'string') return item;
+                if (typeof item === 'string') {
+                    return item;
+                }
+
                 return item?.text || item?.content || '';
             })
             .join('');
@@ -1694,6 +1710,7 @@ async function generateBySecondaryApi(prompt) {
 
     return String(result);
 }
+
 
 function saveTutuSettings() {
     tutuSettings = {
@@ -1834,10 +1851,11 @@ function saveCurrentApiPreset() {
         return;
     }
 
-    if (!model) {
-        toastr.warning('请输入模型名称');
-        return;
-    }
+if (!model) {
+    toastr.warning('请先拉取并选择一个模型');
+    return;
+}
+
 
     const preset = {
         name,
@@ -1876,7 +1894,27 @@ function loadSelectedApiPreset() {
 
     $('#tutu_secondary_endpoint').val(preset.endpoint || '');
     $('#tutu_secondary_api_key').val(preset.apiKey || '');
-    $('#tutu_secondary_model').val(preset.model || '');
+    const presetModel = String(preset.model || '');
+
+const $modelSelect =
+    $('#tutu_secondary_model');
+
+if (
+    presetModel &&
+    !$modelSelect.find(
+        `option[value="${CSS.escape(presetModel)}"]`
+    ).length
+) {
+    $modelSelect.append(
+        $('<option>', {
+            value: presetModel,
+            text: `${presetModel}（预设）`
+        })
+    );
+}
+
+$modelSelect.val(presetModel);
+
     $('#tutu_api_preset_name').val(preset.name || '');
 
     toastr.success(`已载入副 API 预设：${preset.name}`);
@@ -2326,6 +2364,24 @@ initTutuAutoGenerationListener();
 $(document).on('change', '#tutu_api_provider', function() {
     updateSecondaryApiVisibility();
 });
+$(document).on(
+    'click',
+    '#tutu_fetch_models_btn',
+    async function () {
+        try {
+            await fetchSecondaryModels();
+        } catch (error) {
+            console.error(
+                '拉取副 API 模型失败：',
+                error
+            );
+
+            toastr.error(
+                error.message || '拉取模型失败'
+            );
+        }
+    }
+);
 
 
 // 保存 API 设置
@@ -2638,4 +2694,3 @@ $(document).on(
 );
 
 });
-
