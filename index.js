@@ -2090,7 +2090,7 @@ if (index === -1) {
     $('#tutu_script_desc').val('');
     $('#tutu_script_category').val('未分类');
     $('#tutu_script_prompt').val('');
-}} else {
+} else {
     const item = tutuScenarios[index];
 
     $('#tutu_editor_title').text('编辑剧本');
