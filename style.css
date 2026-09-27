@@ -1327,3 +1327,26 @@
 #tutu_library_list .tutu-category-section:not(.expanded) .tutu-category-dropzone {
     display: none;
 }
+/* PC 端不要屏蔽指针手势，交给原生 HTML5 拖放 */
+.tutu-script-card {
+    touch-action: auto;
+}
+
+@media (hover: none) and (pointer: coarse) {
+    .tutu-script-card {
+        touch-action: none;
+    }
+}
+
+/* 折叠状态下，分类标题作为落点 */
+#tutu_library_list .tutu-category-header.drag-over {
+    outline: 2px dashed #fff;
+    outline-offset: -3px;
+    filter: brightness(1.18);
+}
+
+#tutu_library_list .tutu-category-dropzone.drag-over {
+    background: rgba(100, 180, 255, 0.16);
+    outline: 2px dashed var(--SmartThemeQuoteColor);
+    outline-offset: -3px;
+}
