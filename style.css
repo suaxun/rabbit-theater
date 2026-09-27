@@ -1242,7 +1242,7 @@
 }
 
 .tutu-category-dropzone {
-    display: none;
+    display: block;
     padding: 10px;
     min-height: 50px;
 }
@@ -1269,4 +1269,63 @@
 .tutu-script-card:active {
     cursor: grabbing;
     opacity: 0.65;
+}
+        /*
+         * 分类默认展开，允许多个分类同时展开
+         */
+        #tutu_library_list .tutu-category-section {
+            display: block;
+        }
+
+        #tutu_library_list .tutu-category-dropzone {
+            display: block;
+            max-height: none;
+            overflow: visible;
+        }
+
+        /*
+         * 如果原来的 CSS 使用 expanded 控制显示，
+         * 这里强制所有分类默认可见
+         */
+        #tutu_library_list .tutu-category-section:not(.collapsed)
+        .tutu-category-dropzone {
+            display: block;
+        }
+
+        /*
+         * 手机端允许触摸拖动
+         */
+        .tutu-script-card {
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .tutu-script-card.tutu-touch-dragging {
+            position: relative;
+            z-index: 99999;
+            opacity: 0.45;
+            transform: scale(0.98);
+        }
+
+        .tutu-category-dropzone.tutu-touch-drag-over {
+            outline: 2px dashed var(--SmartThemeQuoteColor);
+            background: color-mix(
+                in srgb,
+                var(--SmartThemeQuoteColor) 15%,
+                transparent
+            );
+        }
+
+        .tutu-touch-drag-ghost {
+            position: fixed;
+            z-index: 100000;
+            pointer-events: none;
+            opacity: 0.9;
+            max-width: 80vw;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.35);
+        }
+.tutu-category-section:not(.expanded)
+.tutu-category-dropzone {
+    display: none;
 }
