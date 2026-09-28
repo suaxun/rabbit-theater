@@ -1327,16 +1327,49 @@
 #tutu_library_list .tutu-category-section:not(.expanded) .tutu-category-dropzone {
     display: none;
 }
-/* PC 端不要屏蔽指针手势，交给原生 HTML5 拖放 */
+/* Pointer Events 拖动：鼠标和触摸都需要 touch-action: none */
 .tutu-script-card {
-    touch-action: auto;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: grab;
 }
 
-@media (hover: none) and (pointer: coarse) {
-    .tutu-script-card {
-        touch-action: none;
-    }
+.tutu-script-card.tutu-touch-dragging {
+    cursor: grabbing;
+    opacity: 0.45;
+    transform: scale(0.98);
 }
+
+.tutu-touch-drag-ghost {
+    position: fixed;
+    z-index: 100000;
+    pointer-events: none;
+    padding: 8px 12px;
+    max-width: 80vw;
+    border-radius: 6px;
+    background: var(--SmartThemeQuoteColor);
+    color: #fff;
+    font-size: 0.85em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0.9;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.35);
+}
+
+#tutu_library_list .tutu-category-header.tutu-touch-drag-over {
+    outline: 2px dashed #fff;
+    outline-offset: -3px;
+    filter: brightness(1.18);
+}
+
+#tutu_library_list .tutu-category-dropzone.tutu-touch-drag-over {
+    outline: 2px dashed var(--SmartThemeQuoteColor);
+    outline-offset: -3px;
+    background: rgba(100, 180, 255, 0.16);
+}
+
 
 /* 折叠状态下，分类标题作为落点 */
 #tutu_library_list .tutu-category-header.drag-over {
