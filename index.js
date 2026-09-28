@@ -2857,6 +2857,8 @@ $(document).on(
     'drop',
     '.tutu-category-drop-target',
     function (event) {
+        console.log('tutu drop 触发', $(this).attr('data-category'));
+
         event.preventDefault();
         event.stopPropagation();
 
