@@ -2417,7 +2417,6 @@ saveTutuExpandedCategories();
                 const $item = $(`
                     <div
                         class="tutu-preset-card tutu-script-card"
-                        draggable="true"
                         data-index="${index}">
 
                         <div class="tutu-script-main">
@@ -2705,6 +2704,11 @@ $(document).on(
     'click',
     '.tutu-category-header',
     function () {
+        if (tutuSuppressNextHeaderClick) {
+            tutuSuppressNextHeaderClick = false;
+            return;
+        }
+
         const $section =
             $(this).closest('.tutu-category-section');
 
@@ -2778,37 +2782,8 @@ function moveTutuScenarioToCategory(index, newCategory) {
     return true;
 }
 
-$(document).on(
-    'dragstart',
-    '.tutu-script-card',
-    function (event) {
-        tutuDraggingScenarioIndex =
-            Number($(this).data('index'));
 
-        event.originalEvent.dataTransfer.effectAllowed =
-            'move';
 
-        event.originalEvent.dataTransfer.setData(
-            'text/plain',
-            String(tutuDraggingScenarioIndex)
-        );
-
-        $(this).addClass('tutu-dragging');
-    }
-);
-
-$(document).on(
-    'dragend',
-    '.tutu-script-card',
-    function () {
-        tutuDraggingScenarioIndex = -1;
-
-        clearTutuDragOverState();
-
-        $('.tutu-script-card')
-            .removeClass('tutu-dragging');
-    }
-);
 
 
 function clearTutuDragOverState() {
@@ -2816,73 +2791,7 @@ function clearTutuDragOverState() {
         .removeClass('drag-over');
 }
 
-// 必须阻止默认行为，否则 PC 上 drop 永远不会触发
-$(document).on(
-    'dragover',
-    '.tutu-category-drop-target',
-    function (event) {
-        event.preventDefault();
 
-        const dataTransfer =
-            event.originalEvent?.dataTransfer;
-
-        if (dataTransfer) {
-            dataTransfer.dropEffect = 'move';
-        }
-
-        if (!$(this).hasClass('drag-over')) {
-            clearTutuDragOverState();
-            $(this).addClass('drag-over');
-        }
-    }
-);
-
-$(document).on(
-    'dragenter',
-    '.tutu-category-drop-target',
-    function (event) {
-        event.preventDefault();
-    }
-);
-
-$(document).on(
-    'dragleave',
-    '.tutu-category-drop-target',
-    function () {
-        $(this).removeClass('drag-over');
-    }
-);
-
-$(document).on(
-    'drop',
-    '.tutu-category-drop-target',
-    function (event) {
-        console.log('tutu drop 触发', $(this).attr('data-category'));
-
-        event.preventDefault();
-        event.stopPropagation();
-
-        clearTutuDragOverState();
-
-        let index = tutuDraggingScenarioIndex;
-
-        if (!Number.isInteger(index) || index < 0) {
-            index = Number(
-                event.originalEvent
-                    ?.dataTransfer
-                    ?.getData('text/plain')
-            );
-        }
-
-        const newCategory = String(
-            $(this).attr('data-category') || ''
-        ).trim();
-
-        moveTutuScenarioToCategory(index, newCategory);
-
-        tutuDraggingScenarioIndex = -1;
-    }
-);
 
 // ==========================================
 // 移动端触摸拖动剧本
@@ -2931,24 +2840,53 @@ function getTutuDropzoneFromTouch(touch) {
 }
 
 
+let tutuSuppressNextHeaderClick = false;
+
+function clearTutuTouchDragState() {
+    const state = tutuTouchDragState;
+
+    if (!state) {
+        return;
+    }
+
+    if (state.$card) {
+        state.$card.removeClass('tutu-touch-dragging');
+    }
+
+    if (state.$ghost) {
+        state.$ghost.remove();
+    }
+
+    $('.tutu-category-drop-target')
+        .removeClass('tutu-touch-drag-over');
+
+    tutuTouchDragState = null;
+}
+
+function getTutuDropTargetFromPoint(x, y) {
+    const element = document.elementFromPoint(x, y);
+
+    if (!element) {
+        return null;
+    }
+
+    const target = element.closest('.tutu-category-drop-target');
+
+    return target ? $(target) : null;
+}
+
 $(document).on(
-    'touchstart',
+    'pointerdown',
     '.tutu-script-card',
     function (event) {
-        const originalEvent = event.originalEvent;
+        const e = event.originalEvent;
 
-        if (
-            !originalEvent ||
-            !originalEvent.touches ||
-            originalEvent.touches.length !== 1
-        ) {
+        // 鼠标只响应左键
+        if (!e || (e.pointerType === 'mouse' && e.button !== 0)) {
             return;
         }
 
-        /*
-         * 如果触摸的是按钮，不启动拖动，
-         * 避免影响载入、编辑、删除、查看按钮
-         */
+        // 点在操作按钮或输入控件上不启动拖动
         if (
             $(event.target).closest(
                 '.tutu-script-actions, button, input, textarea, select'
@@ -2957,26 +2895,18 @@ $(document).on(
             return;
         }
 
-        const touch = originalEvent.touches[0];
+        const index = Number($(this).attr('data-index'));
 
-        const index = Number(
-            $(this).attr('data-index')
-        );
-
-        if (
-            !Number.isInteger(index) ||
-            !tutuScenarios[index]
-        ) {
+        if (!Number.isInteger(index) || !tutuScenarios[index]) {
             return;
         }
 
         tutuTouchDragState = {
             index,
+            pointerId: e.pointerId,
             $card: $(this),
-            startX: touch.clientX,
-            startY: touch.clientY,
-            currentX: touch.clientX,
-            currentY: touch.clientY,
+            startX: e.clientX,
+            startY: e.clientY,
             dragging: false,
             $ghost: null,
         };
@@ -2984,42 +2914,26 @@ $(document).on(
 );
 
 $(document).on(
-    'touchmove',
+    'pointermove',
     function (event) {
-        if (!tutuTouchDragState) {
-            return;
-        }
-
-        const originalEvent = event.originalEvent;
-
-        if (
-            !originalEvent ||
-            !originalEvent.touches ||
-            originalEvent.touches.length !== 1
-        ) {
-            return;
-        }
-
-        const touch = originalEvent.touches[0];
         const state = tutuTouchDragState;
 
-        state.currentX = touch.clientX;
-        state.currentY = touch.clientY;
+        if (!state) {
+            return;
+        }
 
-        const distance = Math.sqrt(
-            Math.pow(
-                touch.clientX - state.startX,
-                2
-            ) +
-            Math.pow(
-                touch.clientY - state.startY,
-                2
-            )
+        const e = event.originalEvent;
+
+        if (!e || e.pointerId !== state.pointerId) {
+            return;
+        }
+
+        const distance = Math.hypot(
+            e.clientX - state.startX,
+            e.clientY - state.startY
         );
 
-        /*
-         * 移动超过 8px 后才认为是拖动
-         */
+        // 超过 8px 才认为是拖动，避免影响普通点击
         if (!state.dragging && distance < 8) {
             return;
         }
@@ -3027,110 +2941,67 @@ $(document).on(
         if (!state.dragging) {
             state.dragging = true;
 
-            state.$card.addClass(
-                'tutu-touch-dragging'
-            );
+            state.$card.addClass('tutu-touch-dragging');
 
-            const scenario =
-                tutuScenarios[state.index];
-
-            state.$ghost = $(
-                '<div class="tutu-touch-drag-ghost"></div>'
-            );
+            state.$ghost = $('<div class="tutu-touch-drag-ghost"></div>');
 
             state.$ghost.text(
-                scenario.name || '移动中的剧本'
+                tutuScenarios[state.index]?.name || '移动中的剧本'
             );
 
             $('body').append(state.$ghost);
         }
 
-        /*
-         * 阻止页面跟随手指滚动
-         */
-                if (event.cancelable) {
+        if (event.cancelable) {
             event.preventDefault();
         }
 
+        state.$ghost.css({
+            left: `${e.clientX + 12}px`,
+            top: `${e.clientY + 12}px`,
+        });
 
-        if (state.$ghost) {
-            state.$ghost.css({
-                left: `${touch.clientX + 12}px`,
-                top: `${touch.clientY + 12}px`,
-            });
-        }
+        const $target = getTutuDropTargetFromPoint(e.clientX, e.clientY);
 
-        const $dropzone =
-            getTutuDropzoneFromTouch(touch);
+        $('.tutu-category-drop-target')
+            .removeClass('tutu-touch-drag-over');
 
-$('.tutu-category-drop-target')
-    .removeClass('tutu-touch-drag-over');
-
-
-        if ($dropzone && $dropzone.length) {
-            $dropzone.addClass(
-                'tutu-touch-drag-over'
-            );
+        if ($target && $target.length) {
+            $target.addClass('tutu-touch-drag-over');
         }
     }
 );
 
 $(document).on(
-    'touchend',
+    'pointerup pointercancel',
     function (event) {
-        if (!tutuTouchDragState) {
-            return;
-        }
-
         const state = tutuTouchDragState;
-        const originalEvent = event.originalEvent;
 
-        let touch = null;
-
-        if (
-            originalEvent &&
-            originalEvent.changedTouches &&
-            originalEvent.changedTouches.length
-        ) {
-            touch = originalEvent.changedTouches[0];
-        }
-
-        if (!touch) {
-            clearTutuTouchDragState();
+        if (!state) {
             return;
         }
 
-        if (state.dragging) {
-                        if (event.cancelable) {
-                event.preventDefault();
-            }
+        const e = event.originalEvent;
 
-
-            const $dropzone =
-                getTutuDropzoneFromTouch(touch);
-
-            if ($dropzone && $dropzone.length) {
-                const newCategory =
-                    String(
-                        $dropzone.attr(
-                            'data-category'
-                        ) || ''
-                    ).trim();
-
-                moveTutuScenarioToCategory(
-                    state.index,
-                    newCategory
-                );
-            }
+        if (!e || e.pointerId !== state.pointerId) {
+            return;
         }
 
-        clearTutuTouchDragState();
-    }
-);
+        if (state.dragging && event.type === 'pointerup') {
+            const $target = getTutuDropTargetFromPoint(e.clientX, e.clientY);
 
-$(document).on(
-    'touchcancel',
-    function () {
+            if ($target && $target.length) {
+                const newCategory = String(
+                    $target.attr('data-category') || ''
+                ).trim();
+
+                moveTutuScenarioToCategory(state.index, newCategory);
+            }
+
+            // 落在分类标题上时，抑制紧随其后的 click
+            tutuSuppressNextHeaderClick = true;
+        }
+
         clearTutuTouchDragState();
     }
 );
