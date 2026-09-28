@@ -1395,3 +1395,155 @@
     outline-offset: -3px;
     background: rgba(100, 180, 255, 0.16);
 }
+/* =========================================================
+   排版精简：图标化操作区
+   ========================================================= */
+
+/* --- 通用图标按钮 --- */
+.tutu-icon-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+
+    box-sizing: border-box;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 7px;
+
+    color: var(--SmartThemeBodyColor);
+    font-size: 0.95em;
+
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.18s ease, filter 0.18s ease;
+}
+
+.tutu-icon-action:hover {
+    background: rgba(255, 255, 255, 0.09);
+}
+
+.tutu-icon-action-primary {
+    background: var(--SmartThemeQuoteColor);
+    border-color: transparent;
+    color: #fff;
+}
+
+.tutu-icon-action-primary:hover {
+    background: var(--SmartThemeQuoteColor);
+    filter: brightness(1.15);
+}
+
+.tutu-icon-action.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+/* --- 生成页顶部一行 --- */
+.tutu-compact-control-panel {
+    gap: 6px;
+}
+
+.tutu-prompt-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+}
+
+#tutu_prompt.text_pole {
+    flex: 1;
+    min-width: 0;
+
+    height: 36px;
+    min-height: 36px;
+    max-height: 140px;
+
+    padding: 7px 10px;
+    font-size: 0.88em;
+    line-height: 1.35;
+
+    resize: vertical;
+    overflow-y: auto;
+}
+
+.tutu-inline-actions {
+    display: flex;
+    gap: 5px;
+    flex-shrink: 0;
+}
+
+.tutu-auto-status {
+    margin-left: auto;
+    padding: 0;
+    min-height: 0;
+    font-size: 0.76em;
+}
+
+/* --- 剧本库工具栏一行 --- */
+.tutu-library-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    flex-shrink: 0;
+}
+
+#tutu_new_category_input.text_pole {
+    flex: 1;
+    min-width: 0;
+    height: 36px;
+    margin: 0;
+    font-size: 0.88em;
+}
+
+/* --- 编辑器更紧凑 --- */
+.tutu-script-editor {
+    gap: 6px;
+    padding: 10px;
+}
+
+.tutu-script-editor .text_pole {
+    margin: 0;
+    font-size: 0.88em;
+}
+
+.tutu-script-editor textarea {
+    min-height: 110px;
+    resize: vertical;
+}
+
+/* --- 结果区补回高度 --- */
+.tutu-result-box {
+    min-height: 240px;
+    padding: 8px 10px;
+}
+
+/* --- 移动端：保持单行，不要竖排 --- */
+@media (max-width: 600px) {
+    .tutu-library-toolbar {
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 5px;
+    }
+
+    .tutu-icon-action {
+        width: 34px;
+        height: 34px;
+    }
+
+    #tutu_prompt.text_pole,
+    #tutu_new_category_input.text_pole {
+        height: 34px;
+        min-height: 34px;
+    }
+
+    .tutu-inline-actions {
+        gap: 4px;
+    }
+
+    .tutu-auto-status {
+        margin-left: auto;
+    }
+}
