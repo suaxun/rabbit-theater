@@ -1789,6 +1789,131 @@ function normalizeSecondaryApiBase(endpoint) {
 
     return endpoint;
 }
+async function fetchSecondaryModels() {
+    const endpointInput = $('#tutu_secondary_endpoint').val().trim();
+    const baseUrl = normalizeSecondaryApiBase(endpointInput);
+    const apiKey = $('#tutu_secondary_api_key').val().trim();
+
+    const $btn = $('#tutu_fetch_models_btn');
+    const $select = $('#tutu_secondary_model');
+
+    // 记住当前已选模型，拉取完成后尽量还原
+    const previousModel =
+        String($select.val() || tutuSettings.model || '').trim();
+
+    $btn.addClass('disabled');
+
+    $select
+        .empty()
+        .append($('<option>', { value: '', text: '正在拉取模型……' }));
+
+    try {
+        const headers = { 'Content-Type': 'application/json' };
+
+        if (apiKey) {
+            headers.Authorization = `Bearer ${apiKey}`;
+        }
+
+        const response = await fetch(`${baseUrl}/models`, {
+            method: 'GET',
+            headers,
+        });
+
+        const responseText = await response.text();
+
+        if (!response.ok) {
+            throw new Error(
+                `拉取模型失败：HTTP ${response.status}\n${responseText}`
+            );
+        }
+
+        let data;
+
+        try {
+            data = JSON.parse(responseText);
+        } catch {
+            throw new Error('副 API 返回的不是 JSON：\n' + responseText);
+        }
+
+        // 兼容 OpenAI 的 { data: [...] }，也兼容直接返回数组
+        const rawList = Array.isArray(data)
+            ? data
+            : Array.isArray(data?.data)
+                ? data.data
+                : Array.isArray(data?.models)
+                    ? data.models
+                    : [];
+
+        const models = Array.from(
+            new Set(
+                rawList
+                    .map(item => {
+                        if (typeof item === 'string') {
+                            return item;
+                        }
+
+                        return String(item?.id || item?.name || '').trim();
+                    })
+                    .filter(Boolean)
+            )
+        ).sort((a, b) => a.localeCompare(b));
+
+        if (!models.length) {
+            throw new Error('副 API 没有返回任何模型');
+        }
+
+        $select.empty();
+
+        $select.append(
+            $('<option>', { value: '', text: '请选择模型' })
+        );
+
+        models.forEach(model => {
+            $select.append(
+                $('<option>', { value: model, text: model })
+            );
+        });
+
+        if (previousModel) {
+            if (!models.includes(previousModel)) {
+                $select.append(
+                    $('<option>', {
+                        value: previousModel,
+                        text: `${previousModel}（已保存）`,
+                    })
+                );
+            }
+
+            $select.val(previousModel);
+        }
+
+        toastr.success(`拉取到 ${models.length} 个模型`);
+
+    } catch (error) {
+        // 失败时把下拉框恢复成可用状态，不要卡在"正在拉取"
+        $select.empty();
+
+        if (previousModel) {
+            $select.append(
+                $('<option>', {
+                    value: previousModel,
+                    text: `${previousModel}（已保存）`,
+                })
+            );
+
+            $select.val(previousModel);
+        } else {
+            $select.append(
+                $('<option>', { value: '', text: '请先拉取模型' })
+            );
+        }
+
+        throw error;
+
+    } finally {
+        $btn.removeClass('disabled');
+    }
+}
 
 async function generateBySecondaryApi(prompt) {
     const endpointInput =
@@ -1803,8 +1928,8 @@ async function generateBySecondaryApi(prompt) {
     const apiKey =
         $('#tutu_secondary_api_key').val().trim();
 
-    const model =
-        $('#tutu_secondary_model').val().trim();
+const model = String($('#tutu_secondary_model').val() || '').trim();
+
 
     if (!model) {
         throw new Error(
@@ -1894,7 +2019,7 @@ tutuSettings = {
         $('#tutu_secondary_api_key').val().trim(),
 
     model:
-        $('#tutu_secondary_model').val().trim(),
+        String($('#tutu_secondary_model').val() || '').trim(),
 
     autoGenerateEnabled:
         $('#tutu_auto_generate_enabled').is(':checked'),
