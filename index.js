@@ -253,58 +253,55 @@ localStorage.setItem(
 
             <!-- TAB 1: 生成区 -->
 <div id="tutu_tab_generate" class="tutu-tab-content active">
-
-    <!-- 顶部紧凑控制区 -->
+    <!-- 顶部紧凑控制区：输入框 + 图标操作同一行 -->
     <div class="tutu-compact-control-panel">
 
         <div class="tutu-prompt-row">
             <textarea
                 id="tutu_prompt"
-                class="text_pole textarea_compact"
-                rows="2"
+                class="text_pole"
+                rows="1"
                 placeholder="输入情境，或从剧本库载入……"></textarea>
 
-            <div
-                id="tutu_generate_btn"
-                class="tutu-director-icon"
-                title="生成小剧场">
-                <i class="fa-solid fa-wand-magic-sparkles"></i>
+            <div class="tutu-inline-actions">
+
+                <div
+                    id="tutu_context_toggle_btn"
+                    class="tutu-icon-action"
+                    title="读取角色与世界书">
+                    <i class="fa-solid fa-book-open"></i>
+                </div>
+
+                <div
+                    id="tutu_clear_prompt_btn"
+                    class="tutu-icon-action"
+                    title="清空情境">
+                    <i class="fa-solid fa-eraser"></i>
+                </div>
+
+                <div
+                    id="tutu_random_script_btn"
+                    class="tutu-icon-action"
+                    title="随机选择剧本并生成">
+                    <i class="fa-solid fa-shuffle"></i>
+                </div>
+
+                <div
+                    id="tutu_generate_btn"
+                    class="tutu-icon-action tutu-icon-action-primary"
+                    title="生成小剧场">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                </div>
+
             </div>
         </div>
 
-        <div class="tutu-compact-actions">
+        <div id="tutu_auto_status" class="tutu-auto-status">
+            <i class="fa-solid fa-circle"></i>
+            <span>手动生成</span>
+        </div>
 
-            <div
-                id="tutu_context_toggle_btn"
-                class="tutu-mini-action"
-                title="角色与世界书">
-                <i class="fa-solid fa-book-open"></i>
-                <span>读取内容</span>
-            </div>
-
-            <div
-                id="tutu_clear_prompt_btn"
-                class="tutu-mini-action"
-                title="清空情境">
-                <i class="fa-solid fa-eraser"></i>
-                <span>清空</span>
-            </div>
-    <div
-        id="tutu_random_script_btn"
-        class="tutu-mini-action"
-        title="随机选择剧本并生成">
-        <i class="fa-solid fa-shuffle"></i>
-        <span>随机剧本</span>
     </div>
-
-            <div
-                id="tutu_auto_status"
-                class="tutu-auto-status">
-                <i class="fa-solid fa-circle"></i>
-                <span>手动生成</span>
-            </div>
-
-        </div>
 
     </div>
 
@@ -411,32 +408,26 @@ localStorage.setItem(
 <div id="tutu_tab_library" class="tutu-tab-content">
 
 <div class="tutu-library-toolbar">
-    <div class="tutu-library-title">
-        <i class="fa-solid fa-book"></i>
-        我的剧本
+    <input
+        id="tutu_new_category_input"
+        class="text_pole"
+        type="text"
+        placeholder="新分类名称">
+
+    <div
+        id="tutu_add_category_btn"
+        class="tutu-icon-action"
+        title="新建分类">
+        <i class="fa-solid fa-folder-plus"></i>
     </div>
 
-    <div class="tutu-library-category-tools">
-        <input
-            id="tutu_new_category_input"
-            class="text_pole"
-            type="text"
-            placeholder="新分类名称">
-
-        <div
-            id="tutu_add_category_btn"
-            class="menu_button margin0">
-            <i class="fa-solid fa-folder-plus"></i>
-            新建分类
-        </div>
-
-        <div
-            id="tutu_new_script_btn"
-            class="menu_button margin0">
-            <i class="fa-solid fa-plus"></i>
-            新建剧本
-        </div>
+    <div
+        id="tutu_new_script_btn"
+        class="tutu-icon-action tutu-icon-action-primary"
+        title="新建剧本">
+        <i class="fa-solid fa-plus"></i>
     </div>
+</div>
 </div>
 
 
@@ -446,10 +437,10 @@ localStorage.setItem(
 
         <div class="tutu-editor-header">
             <strong id="tutu_editor_title">新建剧本</strong>
-
             <div id="tutu_cancel_edit_btn"
-                 class="menu_button margin0 tutu-small-btn">
-                取消
+                 class="tutu-icon-action"
+                 title="取消编辑">
+                <i class="fa-solid fa-xmark"></i>
             </div>
         </div>
 
