@@ -253,7 +253,8 @@ localStorage.setItem(
 
             <!-- TAB 1: 生成区 -->
 <div id="tutu_tab_generate" class="tutu-tab-content active">
-    <!-- 顶部紧凑控制区：输入框 + 图标操作同一行 -->
+
+    <!-- 顶部紧凑控制区：输入框 + 全部图标按钮同一行 -->
     <div class="tutu-compact-control-panel">
 
         <div class="tutu-prompt-row">
@@ -263,47 +264,62 @@ localStorage.setItem(
                 rows="1"
                 placeholder="输入情境，或从剧本库载入……"></textarea>
 
-            <div class="tutu-inline-actions">
+            <div class="tutu-prompt-tools">
+
+                <div
+                    id="tutu_generate_btn"
+                    class="tutu-icon-action primary"
+                    role="button"
+                    tabindex="0"
+                    aria-label="生成小剧场"
+                    title="生成小剧场">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                </div>
+
+                <div
+                    id="tutu_random_script_btn"
+                    class="tutu-icon-action"
+                    role="button"
+                    tabindex="0"
+                    aria-label="随机选择剧本并生成"
+                    title="随机剧本">
+                    <i class="fa-solid fa-shuffle"></i>
+                </div>
 
                 <div
                     id="tutu_context_toggle_btn"
                     class="tutu-icon-action"
-                    title="读取角色与世界书">
+                    role="button"
+                    tabindex="0"
+                    aria-label="展开角色与世界书"
+                    title="读取内容">
                     <i class="fa-solid fa-book-open"></i>
                 </div>
 
                 <div
                     id="tutu_clear_prompt_btn"
                     class="tutu-icon-action"
-                    title="清空情境">
+                    role="button"
+                    tabindex="0"
+                    aria-label="清空情境"
+                    title="清空">
                     <i class="fa-solid fa-eraser"></i>
                 </div>
 
                 <div
-                    id="tutu_random_script_btn"
-                    class="tutu-icon-action"
-                    title="随机选择剧本并生成">
-                    <i class="fa-solid fa-shuffle"></i>
-                </div>
-
-                <div
-                    id="tutu_generate_btn"
-                    class="tutu-icon-action tutu-icon-action-primary"
-                    title="生成小剧场">
-                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    id="tutu_auto_status"
+                    class="tutu-auto-status"
+                    role="status"
+                    aria-label="手动生成"
+                    title="手动生成">
+                    <i class="fa-solid fa-circle"></i>
                 </div>
 
             </div>
         </div>
 
-        <div id="tutu_auto_status" class="tutu-auto-status">
-            <i class="fa-solid fa-circle"></i>
-            <span>手动生成</span>
-        </div>
-
     </div>
 
-    </div>
 
     <!-- 角色、世界书、历史记录，默认隐藏 -->
     <div
@@ -408,27 +424,41 @@ localStorage.setItem(
 <div id="tutu_tab_library" class="tutu-tab-content">
 
 <div class="tutu-library-toolbar">
-    <input
-        id="tutu_new_category_input"
-        class="text_pole"
-        type="text"
-        placeholder="新分类名称">
-
-    <div
-        id="tutu_add_category_btn"
-        class="tutu-icon-action"
-        title="新建分类">
-        <i class="fa-solid fa-folder-plus"></i>
+    <div class="tutu-library-title">
+        <i class="fa-solid fa-book"></i>
+        我的剧本
     </div>
 
-    <div
-        id="tutu_new_script_btn"
-        class="tutu-icon-action tutu-icon-action-primary"
-        title="新建剧本">
-        <i class="fa-solid fa-plus"></i>
+    <div class="tutu-library-category-tools">
+        <input
+            id="tutu_new_category_input"
+            class="text_pole"
+            type="text"
+            aria-label="新分类名称"
+            placeholder="新分类名称">
+
+        <div
+            id="tutu_add_category_btn"
+            class="tutu-icon-action"
+            role="button"
+            tabindex="0"
+            aria-label="新建分类"
+            title="新建分类">
+            <i class="fa-solid fa-folder-plus"></i>
+        </div>
+
+        <div
+            id="tutu_new_script_btn"
+            class="tutu-icon-action primary"
+            role="button"
+            tabindex="0"
+            aria-label="新建剧本"
+            title="新建剧本">
+            <i class="fa-solid fa-plus"></i>
+        </div>
     </div>
 </div>
-</div>
+
 
 
 
@@ -437,10 +467,10 @@ localStorage.setItem(
 
         <div class="tutu-editor-header">
             <strong id="tutu_editor_title">新建剧本</strong>
+
             <div id="tutu_cancel_edit_btn"
-                 class="tutu-icon-action"
-                 title="取消编辑">
-                <i class="fa-solid fa-xmark"></i>
+                 class="menu_button margin0 tutu-small-btn">
+                取消
             </div>
         </div>
 
@@ -2111,9 +2141,7 @@ function updateSecondaryApiVisibility() {
     }
 }
 function updateAutoGenerateStatus() {
-    const enabled = Boolean(
-        tutuSettings.autoGenerateEnabled
-    );
+    const enabled = Boolean(tutuSettings.autoGenerateEnabled);
 
     const $status = $('#tutu_auto_status');
 
@@ -2121,22 +2149,15 @@ function updateAutoGenerateStatus() {
         return;
     }
 
-    if (enabled) {
-        $status
-            .addClass('enabled')
-            .html(`
-                <i class="fa-solid fa-circle"></i>
-                <span>自动生成已开启</span>
-            `);
-    } else {
-        $status
-            .removeClass('enabled')
-            .html(`
-                <i class="fa-solid fa-circle"></i>
-                <span>手动生成</span>
-            `);
-    }
+    const label = enabled ? '自动生成已开启' : '手动生成';
+
+    $status
+        .toggleClass('enabled', enabled)
+        .attr('title', label)
+        .attr('aria-label', label)
+        .html('<i class="fa-solid fa-circle"></i>');
 }
+
 
 function saveCurrentApiPreset() {
     const name = $('#tutu_api_preset_name').val().trim();
@@ -3577,26 +3598,22 @@ saveTutuCategories();
     $('#tutu_script_editor').slideUp(150);
 });
 // 查看 / 隐藏剧本内容
-$(document).on('click', '.tutu-view-script-btn', function() {
+$(document).on('click', '.tutu-view-script-btn', function () {
     const $card = $(this).closest('.tutu-script-card');
     const $content = $card.find('.tutu-script-content');
+    const $icon = $(this).find('i');
 
-    const isVisible = $content.is(':visible');
-
-    if (isVisible) {
+    if ($content.is(':visible')) {
         $content.slideUp(150);
-        $(this).html(`
-            <i class="fa-solid fa-eye"></i>
-            查看
-        `);
+        $icon.attr('class', 'fa-solid fa-eye');
+        $(this).attr('title', '查看剧本内容');
     } else {
         $content.slideDown(150);
-        $(this).html(`
-            <i class="fa-solid fa-eye-slash"></i>
-            隐藏
-        `);
+        $icon.attr('class', 'fa-solid fa-eye-slash');
+        $(this).attr('title', '隐藏剧本内容');
     }
 });
+
 // 载入剧本到生成页面
 $(document).on('click', '.tutu-load-script-btn', function() {
     // 获取当前按钮上的剧本编号
