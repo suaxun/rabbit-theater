@@ -1350,3 +1350,15 @@
     outline: 2px dashed var(--SmartThemeQuoteColor);
     outline-offset: -3px;
 }
+/* 触摸拖动时，折叠分类的标题也要有落点提示 */
+#tutu_library_list .tutu-category-header.tutu-touch-drag-over {
+    outline: 2px dashed #fff;
+    outline-offset: -3px;
+    filter: brightness(1.18);
+}
+
+#tutu_library_list .tutu-category-dropzone.tutu-touch-drag-over {
+    outline: 2px dashed var(--SmartThemeQuoteColor);
+    outline-offset: -3px;
+    background: rgba(100, 180, 255, 0.16);
+}
