@@ -46,8 +46,25 @@ function loadLocalJson(key, defaultValue) {
 }
 
 let tutuScenarios = loadLocalJson(STORAGE_KEY, []);
-// 当前展开的分类，null 表示全部折叠
-let tutuExpandedCategory = null;
+// 展开的分类集合，可以同时展开多个
+const EXPANDED_KEY = 'tutu_theater_expanded_categories';
+
+const tutuStoredExpanded = loadLocalJson(EXPANDED_KEY, null);
+
+let tutuExpandedCategories = new Set(
+    Array.isArray(tutuStoredExpanded) ? tutuStoredExpanded : []
+);
+
+// 第一次使用时默认全部展开
+let tutuExpandedInitialized = Array.isArray(tutuStoredExpanded);
+
+function saveTutuExpandedCategories() {
+    localStorage.setItem(
+        EXPANDED_KEY,
+        JSON.stringify(Array.from(tutuExpandedCategories))
+    );
+}
+
 let tutuIsGenerating = false;
 let tutuLastAutoMessageKey = '';
 let tutuSettings = loadLocalJson(SETTINGS_KEY, {
@@ -2304,14 +2321,21 @@ function renderLibrary() {
     $list.empty();
 
     const categories = getAllTutuCategories();
-        // 手风琴：只保留一个展开的分类
-    if (tutuExpandedCategory && !categories.includes(tutuExpandedCategory)) {
-        tutuExpandedCategory = null;
+// 清掉已经不存在的分类
+Array.from(tutuExpandedCategories).forEach(category => {
+    if (!categories.includes(category)) {
+        tutuExpandedCategories.delete(category);
     }
+});
 
-    if (!tutuExpandedCategory && categories.length) {
-        tutuExpandedCategory = categories[0];
-    }
+// 首次使用默认全部展开
+if (!tutuExpandedInitialized && categories.length) {
+    categories.forEach(category => tutuExpandedCategories.add(category));
+    tutuExpandedInitialized = true;
+}
+
+saveTutuExpandedCategories();
+
 
 
     if (!categories.length) {
@@ -2340,7 +2364,7 @@ function renderLibrary() {
                 return itemCategory === category;
             });
 
-        const isExpanded = category === tutuExpandedCategory;
+        const isExpanded = tutuExpandedCategories.has(category);
 
         const $section = $(`
             <div
@@ -2689,19 +2713,17 @@ $(document).on(
         ).trim();
 
         if ($section.hasClass('expanded')) {
-            tutuExpandedCategory = null;
+            tutuExpandedCategories.delete(category);
             $section.removeClass('expanded');
-            return;
+        } else {
+            tutuExpandedCategories.add(category);
+            $section.addClass('expanded');
         }
 
-        tutuExpandedCategory = category;
-
-        $('#tutu_library_list .tutu-category-section')
-            .removeClass('expanded');
-
-        $section.addClass('expanded');
+        saveTutuExpandedCategories();
     }
 );
+
 
 let tutuDraggingScenarioIndex = -1;
 function moveTutuScenarioToCategory(index, newCategory) {
@@ -2739,9 +2761,15 @@ function moveTutuScenarioToCategory(index, newCategory) {
     );
 
     saveTutuCategories();
+
+    // 先展开目标分类，再渲染，这样能立刻看到移动结果
+    tutuExpandedCategories.add(newCategory);
+    tutuExpandedCategories.add(oldCategory);
+    saveTutuExpandedCategories();
+
     renderLibrary();
-    tutuExpandedCategory = newCategory;
     renderTutuCategorySelects();
+
 
     toastr.success(
         `已将「${scenario.name}」移动到「${newCategory}」`
@@ -2871,8 +2899,9 @@ function clearTutuTouchDragState() {
         state.$card.removeClass('tutu-touch-dragging');
     }
 
-    $('.tutu-category-dropzone')
-        .removeClass('tutu-touch-drag-over');
+$('.tutu-category-drop-target')
+    .removeClass('tutu-touch-drag-over');
+
 
     if (state.$ghost) {
         state.$ghost.remove();
@@ -2891,14 +2920,14 @@ function getTutuDropzoneFromTouch(touch) {
         return null;
     }
 
-    const dropzone = element.closest(
-        '.tutu-category-dropzone'
+    // 展开的分类落在 dropzone 上，折叠的分类落在标题上
+    const target = element.closest(
+        '.tutu-category-drop-target'
     );
 
-    return dropzone
-        ? $(dropzone)
-        : null;
+    return target ? $(target) : null;
 }
+
 
 $(document).on(
     'touchstart',
@@ -3032,8 +3061,9 @@ $(document).on(
         const $dropzone =
             getTutuDropzoneFromTouch(touch);
 
-        $('.tutu-category-dropzone')
-            .removeClass('tutu-touch-drag-over');
+$('.tutu-category-drop-target')
+    .removeClass('tutu-touch-drag-over');
+
 
         if ($dropzone && $dropzone.length) {
             $dropzone.addClass(
