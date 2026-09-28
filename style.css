@@ -1396,43 +1396,53 @@
     background: rgba(100, 180, 255, 0.16);
 }
 /* =========================================================
-   排版精简：图标化操作区
+   兔兔小剧场：紧凑图标排版
    ========================================================= */
 
-/* --- 通用图标按钮 --- */
+/* ---- 通用图标按钮 ---- */
 .tutu-icon-action {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
 
-    width: 36px;
-    height: 36px;
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
     flex-shrink: 0;
 
     box-sizing: border-box;
+    padding: 0;
+
     border: 1px solid var(--SmartThemeBorderColor);
     border-radius: 7px;
 
+    background: rgba(255, 255, 255, 0.04);
     color: var(--SmartThemeBodyColor);
-    font-size: 0.95em;
 
+    font-size: 0.95em;
     cursor: pointer;
     user-select: none;
-    transition: background 0.18s ease, filter 0.18s ease;
+
+    transition: background 0.18s ease, filter 0.18s ease, transform 0.18s ease;
 }
 
 .tutu-icon-action:hover {
-    background: rgba(255, 255, 255, 0.09);
+    background: rgba(255, 255, 255, 0.12);
+    transform: translateY(-1px);
 }
 
-.tutu-icon-action-primary {
+.tutu-icon-action:focus-visible {
+    outline: 2px solid var(--SmartThemeQuoteColor);
+    outline-offset: 2px;
+}
+
+.tutu-icon-action.primary {
     background: var(--SmartThemeQuoteColor);
     border-color: transparent;
     color: #fff;
 }
 
-.tutu-icon-action-primary:hover {
-    background: var(--SmartThemeQuoteColor);
+.tutu-icon-action.primary:hover {
     filter: brightness(1.15);
 }
 
@@ -1441,7 +1451,7 @@
     pointer-events: none;
 }
 
-/* --- 生成页顶部一行 --- */
+/* ---- 生成页：输入框 + 按钮同一行 ---- */
 .tutu-compact-control-panel {
     gap: 6px;
 }
@@ -1450,17 +1460,21 @@
     display: flex;
     align-items: flex-start;
     gap: 6px;
+    width: 100%;
 }
 
-#tutu_prompt.text_pole {
+.tutu-prompt-row textarea#tutu_prompt {
     flex: 1;
     min-width: 0;
 
-    height: 36px;
-    min-height: 36px;
-    max-height: 140px;
+    height: 34px;
+    min-height: 34px;
+    max-height: 120px;
 
-    padding: 7px 10px;
+    box-sizing: border-box;
+    padding: 6px 9px;
+    margin: 0;
+
     font-size: 0.88em;
     line-height: 1.35;
 
@@ -1468,82 +1482,115 @@
     overflow-y: auto;
 }
 
-.tutu-inline-actions {
+.tutu-prompt-tools {
     display: flex;
+    align-items: center;
     gap: 5px;
     flex-shrink: 0;
 }
 
-.tutu-auto-status {
-    margin-left: auto;
+/* 自动生成状态：只保留一个圆点 */
+#tutu_auto_status.tutu-auto-status {
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
     padding: 0;
-    min-height: 0;
-    font-size: 0.76em;
+    margin: 0;
+
+    border: 1px dashed var(--SmartThemeBorderColor);
+    border-radius: 7px;
+
+    opacity: 1;
 }
 
-/* --- 剧本库工具栏一行 --- */
+#tutu_auto_status.tutu-auto-status i {
+    font-size: 0.6em;
+    color: #888;
+}
+
+#tutu_auto_status.tutu-auto-status.enabled {
+    border-style: solid;
+    border-color: #55c878;
+}
+
+#tutu_auto_status.tutu-auto-status.enabled i {
+    color: #55c878;
+}
+
+/* ---- 剧本库工具栏：输入框 + 两个图标按钮同一行 ---- */
 .tutu-library-toolbar {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     margin-bottom: 8px;
-    flex-shrink: 0;
 }
 
-#tutu_new_category_input.text_pole {
+.tutu-library-title {
+    flex-shrink: 0;
+    font-size: 1em;
+}
+
+.tutu-library-category-tools {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
     flex: 1;
     min-width: 0;
-    height: 36px;
+    flex-wrap: nowrap;
+}
+
+.tutu-library-category-tools input#tutu_new_category_input {
+    flex: 1;
+    min-width: 0;
+    max-width: 220px;
+
+    height: 34px;
+    box-sizing: border-box;
+    padding: 6px 9px;
     margin: 0;
+
     font-size: 0.88em;
 }
 
-/* --- 编辑器更紧凑 --- */
-.tutu-script-editor {
-    gap: 6px;
-    padding: 10px;
+/* ---- 剧本卡片按钮与新按钮尺寸对齐 ---- */
+.tutu-script-actions .tutu-icon-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
 }
 
-.tutu-script-editor .text_pole {
-    margin: 0;
-    font-size: 0.88em;
-}
-
-.tutu-script-editor textarea {
-    min-height: 110px;
-    resize: vertical;
-}
-
-/* --- 结果区补回高度 --- */
+/* ---- 结果区顶到更多空间 ---- */
 .tutu-result-box {
     min-height: 240px;
-    padding: 8px 10px;
 }
 
-/* --- 移动端：保持单行，不要竖排 --- */
+/* ---- 移动端 ---- */
 @media (max-width: 600px) {
+    .tutu-prompt-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .tutu-prompt-tools {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    #tutu_auto_status.tutu-auto-status {
+        margin-right: auto;
+    }
+
     .tutu-library-toolbar {
-        flex-direction: row !important;
-        align-items: center !important;
-        gap: 5px;
+        flex-direction: column;
+        align-items: stretch;
     }
 
-    .tutu-icon-action {
-        width: 34px;
-        height: 34px;
+    .tutu-library-category-tools {
+        justify-content: stretch;
     }
 
-    #tutu_prompt.text_pole,
-    #tutu_new_category_input.text_pole {
-        height: 34px;
-        min-height: 34px;
-    }
-
-    .tutu-inline-actions {
-        gap: 4px;
-    }
-
-    .tutu-auto-status {
-        margin-left: auto;
+    .tutu-library-category-tools input#tutu_new_category_input {
+        max-width: none;
     }
 }
