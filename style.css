@@ -697,68 +697,94 @@
 }
 
 /* =========================
-   2. 顶部标签栏
+   2. 顶部标签栏 (Ins 极简风)
    ========================= */
 
-/*
- * 你 HTML 中使用的是 tutu-icon-toolbar，
- * 不是 tutu-tab-nav。
- */
 .tutu-icon-toolbar {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 6px;
-
+    display: flex;
+    justify-content: space-around; /* 5个图标均匀分布 */
+    align-items: center;
     width: 100%;
-    padding: 5px;
-
-    background: rgba(0, 0, 0, 0.16);
-    border: 1px solid var(--SmartThemeBorderColor);
-    border-radius: 10px;
-
+    padding: 5px 10px 15px 10px; /* 底部留出空间给小圆点 */
+    
+    /* 去除沉重的背景和边框，只留一道微弱的底边分隔线 */
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 0;
     flex-shrink: 0;
 }
 
 .tutu-icon-tab {
-    min-width: 0;
-
+    position: relative; /* 为底部小圆点定位 */
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 4px;
-
-    padding: 9px 6px;
-
-    border-radius: 7px;
+    
+    width: 45px;
+    height: 45px;
+    padding: 0;
+    
+    /* 圆形点击热区 */
+    border-radius: 50%;
     color: var(--SmartThemeBodyColor);
-    opacity: 0.65;
-
+    opacity: 0.45; /* 未选中时降低透明度 */
+    
     cursor: pointer;
     user-select: none;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
-.tutu-icon-tab i {
-    font-size: 1.05em;
-}
-
+/* 隐藏图标下方的文字 */
 .tutu-icon-tab span {
-    font-size: 0.82em;
-    white-space: nowrap;
+    display: none !important; 
 }
 
+/* 放大图标，因为文字没了 */
+.tutu-icon-tab i {
+    font-size: 1.5em;
+    transition: transform 0.3s ease;
+}
+
+/* 悬浮效果：变亮并轻微放大 */
 .tutu-icon-tab:hover {
-    opacity: 1;
-    background: rgba(255, 255, 255, 0.08);
+    opacity: 0.8;
+    background: rgba(255, 255, 255, 0.05);
+}
+.tutu-icon-tab:hover i {
+    transform: scale(1.1);
 }
 
+/* 选中状态（Active） */
 .tutu-icon-tab.active {
     opacity: 1;
-    color: var(--SmartThemeQuoteColor);
-    background: rgba(255, 255, 255, 0.1);
-    box-shadow: inset 0 -2px 0 var(--SmartThemeQuoteColor);
+    color: var(--SmartThemeQuoteColor); /* 使用主题强调色 */
+    background: transparent;
+    box-shadow: none; /* 移除以前丑陋的内阴影 */
 }
+
+.tutu-icon-tab.active i {
+    transform: scale(1.15); /* 选中时图标更大一点 */
+}
+
+/* 经典 Ins 风：选中时的底部小圆点指示器 */
+.tutu-icon-tab::after {
+    content: '';
+    position: absolute;
+    bottom: -8px; /* 圆点在图标下方 */
+    left: 50%;
+    transform: translateX(-50%) scale(0);
+    width: 5px;
+    height: 5px;
+    background-color: var(--SmartThemeQuoteColor);
+    border-radius: 50%;
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.tutu-icon-tab.active::after {
+    transform: translateX(-50%) scale(1); /* 选中时圆点弹出 */
+}
+
 
 /* =========================
    3. Tab 页面
@@ -1399,57 +1425,65 @@
    兔兔小剧场：紧凑图标排版
    ========================================================= */
 
-/* ---- 通用图标按钮 ---- */
+/* ---- 通用图标按钮 (极简圆形) ---- */
 .tutu-icon-action {
     display: inline-flex;
     align-items: center;
     justify-content: center;
 
-    width: 34px;
-    min-width: 34px;
-    height: 34px;
+    width: 38px;     /* 稍微调大一点，更好点 */
+    min-width: 38px;
+    height: 38px;
     flex-shrink: 0;
 
     box-sizing: border-box;
     padding: 0;
 
-    border: 1px solid var(--SmartThemeBorderColor);
-    border-radius: 7px;
+    /* 取消边框，改为纯净的毛玻璃背景 */
+    border: none;
+    border-radius: 50%; /* 纯正的圆形 */
 
-    background: rgba(255, 255, 255, 0.04);
+    background: rgba(255, 255, 255, 0.06);
     color: var(--SmartThemeBodyColor);
 
-    font-size: 0.95em;
+    font-size: 1.1em;
     cursor: pointer;
     user-select: none;
 
-    transition: background 0.18s ease, filter 0.18s ease, transform 0.18s ease;
+    /* 增加阴影和丝滑动画 */
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .tutu-icon-action:hover {
-    background: rgba(255, 255, 255, 0.12);
-    transform: translateY(-1px);
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-.tutu-icon-action:focus-visible {
-    outline: 2px solid var(--SmartThemeQuoteColor);
-    outline-offset: 2px;
+.tutu-icon-action:active {
+    transform: translateY(0) scale(0.95);
 }
 
+/* 主按钮（比如魔法棒生成按钮） */
 .tutu-icon-action.primary {
     background: var(--SmartThemeQuoteColor);
-    border-color: transparent;
     color: #fff;
+    /* 增加主题色发光阴影 */
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--SmartThemeQuoteColor) 40%, transparent);
 }
 
 .tutu-icon-action.primary:hover {
     filter: brightness(1.15);
+    box-shadow: 0 6px 16px color-mix(in srgb, var(--SmartThemeQuoteColor) 60%, transparent);
 }
 
 .tutu-icon-action.disabled {
-    opacity: 0.5;
+    opacity: 0.4;
     pointer-events: none;
+    box-shadow: none;
 }
+
 
 /* ---- 生成页：输入框 + 按钮同一行 ---- */
 .tutu-compact-control-panel {
@@ -1769,7 +1803,6 @@
     flex-wrap: wrap;
 }
 
-.tutu-export-style-select,
 .tutu-export-format-select {
     width: auto;
     min-width: 105px;
@@ -1784,12 +1817,27 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 30px;
-    height: 30px;
-    padding: 0 8px;
-    border-radius: 6px;
+    min-width: 32px;
+    height: 32px;
+    padding: 0 12px;
+    border-radius: 20px; /* 胶囊状 */
     cursor: pointer;
-    transition: 0.2s ease;
+    font-size: 0.85em;
+    font-weight: bold;
+    border: 1px solid rgba(255,255,255,0.05);
+    background: rgba(0,0,0,0.2);
+    transition: all 0.2s ease;
+}
+
+.tutu-result-mode-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.tutu-result-mode-btn.active {
+    color: #fff;
+    background: var(--SmartThemeQuoteColor);
+    border-color: transparent;
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--SmartThemeQuoteColor) 40%, transparent);
 }
 
 .tutu-result-mode-btn:hover {
@@ -2465,5 +2513,547 @@ body.tutu-fullscreen-open {
         min-height: 0;
     }
 }
+/* ==========================================
+   自定义标签捕捉样式
+   ========================================== */
 
+.tutu-captured-element {
+    position: relative;
+    border: 1px solid var(--SmartThemeQuoteColor, #7b68ee) !important;
+    border-radius: 8px !important;
+    overflow: visible;
+}
+
+.tutu-capture-actions-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+
+    padding: 6px 10px;
+    margin-bottom: 6px;
+
+    border-radius: 6px;
+
+    background: var(--SmartThemeQuoteColor, #7b68ee);
+    color: #fff;
+
+    font-size: 0.84em;
+    font-weight: bold;
+}
+
+.tutu-capture-label {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.tutu-capture-buttons {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.tutu-capture-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 26px;
+    height: 26px;
+    padding: 0;
+
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 5px;
+
+    background: rgba(0, 0, 0, 0.18);
+    color: #fff;
+
+    cursor: pointer;
+    font-size: 0.82em;
+
+    transition:
+        background 0.18s ease,
+        transform 0.18s ease;
+}
+
+.tutu-capture-action-btn:hover {
+    background: rgba(255, 255, 255, 0.22);
+    transform: translateY(-1px);
+}
+
+.tutu-capture-action-btn:active {
+    transform: translateY(0);
+}
+
+/*
+ * 如果捕捉的是 <details> 标签，
+ * 让按钮栏显示在 summary 和内容之间
+ */
+details.tutu-captured-element > .tutu-capture-actions-bar {
+    margin-top: 6px;
+}
+
+/*
+ * 手机端适配
+ */
+@media (max-width: 600px) {
+    .tutu-capture-actions-bar {
+        padding: 5px 8px;
+        font-size: 0.8em;
+    }
+
+    .tutu-capture-action-btn {
+        width: 24px;
+        height: 24px;
+    }
+}
+/* ==========================================
+   书摘图片编辑器
+   ========================================== */
+
+#tutu_quote_editor_overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 2147483100;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+.tutu-quote-editor {
+    display: flex;
+    flex-direction: column;
+
+    width: min(960px, calc(100vw - 30px));
+    max-height: calc(100vh - 40px);
+
+    border-radius: 12px;
+    overflow: hidden;
+
+    background: var(--SmartThemeBlurTintColor, #1e1e1e);
+    color: var(--SmartThemeBodyColor, #eee);
+    border: 1px solid var(--SmartThemeBorderColor);
+    box-shadow: 0 16px 50px rgba(0, 0, 0, 0.6);
+}
+
+.tutu-quote-editor-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+
+    padding: 12px 16px;
+
+    background: var(--SmartThemeQuoteColor, #6557c7);
+    color: #fff;
+
+    flex-shrink: 0;
+}
+
+.tutu-quote-editor-title {
+    font-weight: bold;
+    font-size: 1.05em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.tutu-quote-editor-body {
+    display: flex;
+    flex-direction: row;
+    gap: 16px;
+
+    padding: 16px;
+
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.tutu-quote-editor-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    width: 320px;
+    min-width: 280px;
+    flex-shrink: 0;
+
+    overflow-y: auto;
+    padding-right: 6px;
+}
+
+.tutu-quote-control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.tutu-quote-control-label {
+    font-size: 0.85em;
+    font-weight: bold;
+    opacity: 0.85;
+}
+
+.tutu-quote-control-row {
+    display: flex;
+    gap: 10px;
+}
+
+.tutu-quote-control-row > .tutu-quote-control-group {
+    flex: 1;
+    min-width: 0;
+}
+
+.tutu-quote-checkboxes {
+    flex-wrap: wrap;
+    gap: 8px 16px;
+}
+
+.tutu-quote-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    cursor: pointer;
+    font-size: 0.88em;
+    white-space: nowrap;
+}
+
+.tutu-quote-checkbox-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.tutu-quote-editor-preview-area {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+
+    overflow: hidden;
+}
+
+.tutu-quote-preview-title {
+    font-size: 0.88em;
+    font-weight: bold;
+    opacity: 0.7;
+    flex-shrink: 0;
+}
+
+.tutu-quote-preview-scroll {
+    flex: 1;
+    min-height: 0;
+
+    overflow: auto;
+
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 8px;
+
+    background: rgba(0, 0, 0, 0.12);
+
+    padding: 10px;
+
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+}
+
+#tutu_qe_preview_canvas {
+    display: block;
+    max-width: 100%;
+    height: auto;
+
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.tutu-quote-editor-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+
+    padding: 12px 16px;
+
+    border-top: 1px solid var(--SmartThemeBorderColor);
+
+    flex-shrink: 0;
+}
+
+.tutu-quote-editor-footer .menu_button {
+    min-width: 110px;
+    justify-content: center;
+}
+
+/* 书摘编辑器内的输入控件 */
+.tutu-quote-editor-controls .text_pole {
+    margin: 0;
+    height: 34px;
+    box-sizing: border-box;
+    padding: 5px 8px;
+    font-size: 0.88em;
+}
+
+.tutu-quote-editor-controls select.text_pole {
+    height: 34px;
+}
+
+/* 滚动条 */
+.tutu-quote-editor-controls::-webkit-scrollbar,
+.tutu-quote-preview-scroll::-webkit-scrollbar {
+    width: 5px;
+}
+
+.tutu-quote-editor-controls::-webkit-scrollbar-thumb,
+.tutu-quote-preview-scroll::-webkit-scrollbar-thumb {
+    background: var(--SmartThemeQuoteColor);
+    border-radius: 5px;
+}
+
+/* ==========================================
+   书摘编辑器 - 移动端
+   ========================================== */
+
+@media (max-width: 700px) {
+    .tutu-quote-editor {
+        width: calc(100vw - 16px);
+        max-height: calc(100vh - 24px);
+    }
+
+    .tutu-quote-editor-body {
+        flex-direction: column;
+        padding: 12px;
+        overflow-y: auto;
+    }
+
+    .tutu-quote-editor-controls {
+        width: 100%;
+        min-width: 0;
+        max-height: none;
+        overflow-y: visible;
+        padding-right: 0;
+    }
+
+    .tutu-quote-editor-preview-area {
+        min-height: 300px;
+    }
+
+    .tutu-quote-preview-scroll {
+        min-height: 250px;
+    }
+
+    .tutu-quote-control-row {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .tutu-quote-checkboxes {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .tutu-quote-editor-footer {
+        padding: 10px 12px;
+        flex-wrap: wrap;
+    }
+
+    .tutu-quote-editor-footer .menu_button {
+        flex: 1;
+        min-width: 0;
+    }
+}
+
+@media (max-width: 400px) {
+    .tutu-quote-editor-header {
+        padding: 10px 12px;
+    }
+
+    .tutu-quote-editor-title {
+        font-size: 0.95em;
+    }
+
+    .tutu-quote-checkbox-label {
+        font-size: 0.82em;
+    }
+
+    .tutu-quote-control-label {
+        font-size: 0.8em;
+    }
+}
+.tutu-custom-css-group {
+    margin-top: 8px;
+}
+
+.tutu-custom-css-textarea {
+    min-height: 180px !important;
+    max-height: 300px;
+    resize: vertical;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace !important;
+    font-size: 0.85em !important;
+    line-height: 1.5;
+}
+/* ==========================================
+   全新书摘预览区滚动与缩放逻辑
+   ========================================== */
+.tutu-quote-preview-scroll {
+    display: block !important;
+    overflow-y: auto !important;
+    overflow-x: auto !important;
+    text-align: center;
+    padding: 20px;
+}
+
+#tutu_qe_preview_canvas {
+    max-width: 100%;
+    height: auto !important;
+    margin: 0 auto;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    cursor: zoom-in; /* 提示可以点击放大 */
+    transition: max-width 0.2s ease;
+}
+
+/* 点击放大后的状态 */
+#tutu_qe_preview_canvas.tutu-zoomed {
+    max-width: none; /* 释放原始分辨率 */
+    cursor: zoom-out;
+}
+/* 输入框变圆润 */
+.tutu-prompt-row textarea#tutu_prompt,
+.tutu-library-category-tools input#tutu_new_category_input {
+    border-radius: 18px !important; /* 胶囊圆角 */
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    background: rgba(0, 0, 0, 0.15) !important;
+    padding: 8px 15px !important;
+}
+/* ==========================================
+   全新 Ins 风：小剧场导入导出面板
+   ========================================== */
+
+/* 面板外框：悬浮玻璃卡片质感 */
+.tutu-transfer-panel {
+    background: rgba(0, 0, 0, 0.15); /* 微透明深色背景 */
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* 顶部标题栏 */
+.tutu-transfer-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding-bottom: 10px;
+}
+
+.tutu-transfer-panel-title {
+    font-weight: bold;
+    font-size: 1.05em;
+    color: var(--SmartThemeQuoteColor);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* 每一行表单（范围、分类、格式） */
+.tutu-transfer-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.tutu-transfer-row .tutu-settings-label {
+    font-size: 0.85em;
+    opacity: 0.8;
+    margin: 0;
+}
+
+/* 圆润的下拉选择框 */
+.tutu-transfer-row select.text_pole {
+    border-radius: 12px !important;
+    background: rgba(0, 0, 0, 0.2) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    padding: 8px 12px;
+    width: 100%;
+    margin: 0;
+    cursor: pointer;
+}
+
+/* ==========================================
+   核心修改：底部操作按钮并排（各占一半）
+   ========================================== */
+.tutu-transfer-actions {
+    display: flex;
+    flex-direction: row; /* 水平排列 */
+    gap: 12px;           /* 按钮之间的间距 */
+    margin-top: 8px;
+}
+
+/* 统一胶囊按钮基础样式 */
+.tutu-transfer-actions .menu_button {
+    flex: 1; /* 两个按钮平分宽度 */
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    border-radius: 20px; /* 胶囊形状 */
+    padding: 10px 0;
+    font-size: 0.9em;
+    font-weight: bold;
+    transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+    border: none;
+}
+
+/* 导出按钮：强调色（主操作） */
+#tutu_export_library_btn {
+    background: var(--SmartThemeQuoteColor);
+    color: #fff;
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--SmartThemeQuoteColor) 40%, transparent);
+}
+#tutu_export_library_btn:hover {
+    filter: brightness(1.15);
+    transform: translateY(-2px);
+}
+
+/* 导入按钮：次要色（毛玻璃质感） */
+#tutu_import_library_btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--SmartThemeBodyColor);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+#tutu_import_library_btn:hover {
+    background: rgba(255, 255, 255, 0.18);
+    transform: translateY(-2px);
+}
+
+/* 底部小字提示信息 */
+.tutu-transfer-panel .tutu-api-help {
+    font-size: 0.75em;
+    opacity: 0.5;
+    text-align: center;
+    margin-top: 4px;
+    line-height: 1.4;
+}
 
